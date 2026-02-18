@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>RapidCare - Test Toast Notifications</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 40px;
+            background: #f5f5f5;
+        }
+
+        .test-buttons {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn-success {
+            background: #198754;
+        }
+
+        .btn-error {
+            background: #dc3545;
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: black;
+        }
+
+        .btn-info {
+            background: #0dcaf0;
+        }
+
+        /* Toast Notifications */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+        }
+
+        .toast {
+            background: white;
+            border-radius: 8px;
+            padding: 16px 20px;
+            margin-bottom: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 300px;
+            animation: slideIn 0.3s ease-out;
+            border-left: 4px solid #0b6efd;
+        }
+
+        .toast.success {
+            border-left-color: #198754;
+        }
+
+        .toast.error {
+            border-left-color: #dc3545;
+        }
+
+        .toast.warning {
+            border-left-color: #ffc107;
+        }
+
+        .toast.info {
+            border-left-color: #0dcaf0;
+        }
+
+        .toast-icon {
+            font-size: 24px;
+        }
+
+        .toast-content {
+            flex: 1;
+        }
+
+        .toast-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .toast-message {
+            font-size: 14px;
+            color: #6c757d;
+        }
+
+        .toast-close {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: #6c757d;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+
+            to {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="toast-container" id="toast-container"></div>
+
+    <h1>🧪 RapidCare Toast Notification Test</h1>
+    <p>Click the buttons below to test different toast types:</p>
+
+    <div class="test-buttons">
+        <button class="btn btn-success"
+            onclick="showToast('Success!', 'Operation completed successfully', 'success')">Success Toast</button>
+        <button class="btn btn-error" onclick="showToast('Error!', 'Something went wrong', 'error')">Error
+            Toast</button>
+        <button class="btn btn-warning" onclick="showToast('Warning!', 'Please review this action', 'warning')">Warning
+            Toast</button>
+        <button class="btn btn-info" onclick="showToast('Info', 'Just some information for you', 'info')">Info
+            Toast</button>
+    </div>
+
+    <div class="test-buttons">
+        <button class="btn btn-success" onclick="testEmergency()">Test: Emergency Accepted</button>
+        <button class="btn btn-info" onclick="testBedUpdate()">Test: Bed Status Updated</button>
+        <button class="btn btn-warning" onclick="testAmbulance()">Test: Ambulance Request</button>
+    </div>
+
+    <script>
+        function showToast(title, message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toastId = 'toast-' + Date.now();
+
+            const icons = {
+                success: '✓',
+                error: '✗',
+                warning: '⚠',
+                info: 'ℹ'
+            };
+
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.id = toastId;
+            toast.innerHTML = `
+        <div class="toast-icon">${icons[type] || '✓'}</div>
+        <div class="toast-content">
+          <div class="toast-title">${title}</div>
+          <div class="toast-message">${message}</div>
+        </div>
+        <button class="toast-close" onclick="closeToast('${toastId}')">×</button>
+      `;
+
+            container.appendChild(toast);
+            setTimeout(() => closeToast(toastId), 5000);
+        }
+
+        function closeToast(toastId) {
+            const toast = document.getElementById(toastId);
+            if (toast) {
+                toast.style.animation = 'slideOut 0.3s ease-out';
+                setTimeout(() => toast.remove(), 300);
+            }
+        }
+
+        function testEmergency() {
+            showToast('Emergency Accepted', 'Ambulance has been notified and is ready for admission procedure', 'success');
+        }
+
+        function testBedUpdate() {
+            showToast('Bed Status Updated', 'Bed W1-B05 is now Vacant', 'info');
+        }
+
+        function testAmbul ance() {
+            showToast('Ambulance Request', 'Emergency from ambulance AMB001', 'warning');
+        }
+    </script>
+</body>
+
+</html>

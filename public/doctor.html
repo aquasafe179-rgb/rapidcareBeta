@@ -1,0 +1,838 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Doctor Portal - RapidCare</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script defer src="/js/client.js"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" type="text/javascript"></script>
+  <style>
+    /* Dashboard Layout */
+    .dashboard-container {
+      display: flex;
+      min-height: 100vh;
+      background-color: var(--bg-body);
+    }
+
+    .sidebar {
+      width: 280px;
+      background-color: #fff;
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      height: 100vh;
+      overflow-y: auto;
+      z-index: 100;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .sidebar-header {
+      padding: var(--spacing-lg);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+    }
+
+    .sidebar-nav {
+      padding: var(--spacing-md);
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-xs);
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+      padding: 0.75rem 1rem;
+      border-radius: var(--border-radius);
+      color: var(--text-muted);
+      font-weight: 500;
+      cursor: pointer;
+      transition: var(--transition-base);
+    }
+
+    .nav-item:hover {
+      background-color: rgba(11, 110, 253, 0.05);
+      color: var(--primary-color);
+      text-decoration: none;
+    }
+
+    .nav-item.active {
+      background-color: rgba(11, 110, 253, 0.1);
+      color: var(--primary-color);
+      font-weight: 600;
+    }
+
+    .main-content {
+      flex: 1;
+      margin-left: 280px;
+      padding: var(--spacing-lg);
+      max-width: 1600px;
+    }
+
+    /* Stats Cards */
+    .stat-card {
+      background: white;
+      padding: var(--spacing-lg);
+      border-radius: var(--border-radius-lg);
+      border: 1px solid rgba(0, 0, 0, 0.05);
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-md);
+      box-shadow: var(--shadow-sm);
+      transition: var(--transition-base);
+    }
+
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .stat-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.75rem;
+    }
+
+    /* Mobile Sidebar Toggle */
+    .menu-toggle {
+      display: none;
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 1000;
+      background: white;
+      border: 1px solid var(--border-color);
+      padding: 0.5rem;
+      border-radius: var(--border-radius);
+      box-shadow: var(--shadow-sm);
+    }
+
+    @media (max-width: 768px) {
+      .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+      }
+
+      .sidebar.open {
+        transform: translateX(0);
+      }
+
+      .main-content {
+        margin-left: 0;
+        padding: var(--spacing-md);
+      }
+
+      .menu-toggle {
+        display: block;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Login Section -->
+  <div id="login-section" class="container"
+    style="display: none; min-height: 100vh; display: flex; align-items: center; justify-content: center;">
+    <div class="card glass" style="width: 100%; max-width: 400px; border-top: 4px solid var(--success-color);">
+      <div class="card-header text-center border-0 pb-0">
+        <img src="/images/doctor.png" alt="Doctor" style="width: 64px; height: 64px; margin-bottom: 1rem;">
+        <h3 class="text-success">Doctor Portal</h3>
+        <p class="text-muted">Please login to access your dashboard</p>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Doctor ID</label>
+        <input id="doc-login-user" class="form-control" placeholder="e.g., DOC001" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input id="doc-login-pass" type="password" class="form-control" placeholder="••••••••" />
+      </div>
+      <button onclick="loginDoctorHere()" class="btn btn-success btn-block">Login</button>
+      <div id="login-msg" class="alert alert-danger mt-3" style="display:none;"></div>
+      <div class="text-center mt-3">
+        <a href="/" class="text-sm text-muted">Back to Home</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dashboard Layout -->
+  <div id="dashboard-layout" class="dashboard-container" style="display: none;">
+
+    <!-- Mobile Toggle -->
+    <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <img src="/images/logo.png" alt="Logo" style="height: 32px;">
+        <div>
+          <h3 class="text-primary mb-0" style="font-size: 1.2rem;">RapidCare</h3>
+          <small class="text-muted">Doctor Panel</small>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        <a class="nav-item active" onclick="showSection('dashboard')">
+          <span>📈</span> Dashboard
+        </a>
+        <a class="nav-item" onclick="showSection('profile')">
+          <span>👨‍⚕️</span> My Profile
+        </a>
+        <a class="nav-item" onclick="showSection('attendance')">
+          <span>📋</span> Attendance History
+        </a>
+        <div style="margin-top: auto; border-top: 1px solid var(--border-color); padding-top: var(--spacing-md);">
+          <a class="nav-item text-danger" onclick="logout()">
+            <span>🚪</span> Logout
+          </a>
+        </div>
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+      <!-- Dashboard Overview -->
+      <div id="section-dashboard" class="portal-section animate-fade-in">
+        <div class="flex justify-between items-center mb-4">
+          <div>
+            <h2 class="mb-1">Greetings, Dr. <span id="dash-name"></span></h2>
+            <p class="text-muted mb-0">Daily medical staff overview</p>
+          </div>
+          <div class="text-sm font-bold text-primary" id="current-date"></div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="grid grid-cols-3 grid-auto-fit gap-md mb-4">
+          <div class="stat-card">
+            <div class="stat-icon" style="background: #e7f1ff; color: #0b6efd;">🏢</div>
+            <div>
+              <div class="text-muted text-xs uppercase font-bold">Base Hospital</div>
+              <h4 class="mb-0" id="dash-hospital">Loading...</h4>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background: #d1e7dd; color: #0f5132;">⏺</div>
+            <div>
+              <div class="text-muted text-xs uppercase font-bold">Availability</div>
+              <h4 class="mb-0" id="dash-status">Loading...</h4>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background: #fff3cd; color: #856404;">🕒</div>
+            <div>
+              <div class="text-muted text-xs uppercase font-bold">Assigned Shift</div>
+              <h4 class="mb-0" id="dash-shift">Loading...</h4>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-md">
+          <!-- Quick Actions -->
+          <div class="card">
+            <div class="card-header border-0 pb-0">
+              <h3 class="font-bold">Medical Actions</h3>
+            </div>
+            <div class="flex gap-md p-4">
+              <button onclick="showSection('attendance')" class="btn btn-outline flex-1 py-4">
+                <div style="font-size: 1.25rem; margin-bottom: 0.5rem;">📍</div>
+                Presence Check
+              </button>
+              <button onclick="showSection('profile')" class="btn btn-outline flex-1 py-4">
+                <div style="font-size: 1.25rem; margin-bottom: 0.5rem;">⚙️</div>
+                Configure Profile
+              </button>
+            </div>
+          </div>
+
+          <!-- Recent Activity -->
+          <div class="card">
+            <div class="card-header border-0 pb-0">
+              <h3 class="font-bold">Recent Logs</h3>
+            </div>
+            <div id="dash-recent-attendance" class="text-sm p-3">
+              <div class="text-center text-muted py-4">Loading history...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Profile Section -->
+      <div id="section-profile" class="portal-section animate-fade-in" style="display: none;">
+        <div class="grid grid-cols-1 gap-md" style="max-width: 800px;">
+          <!-- Personal Info -->
+          <div class="card">
+            <div class="card-header flex justify-between items-center">
+              <h3 class="mb-0">Profile Management</h3>
+              <button onclick="saveProfile()" class="btn btn-primary btn-sm">Save Changes</button>
+            </div>
+            <div class="grid grid-cols-2 gap-md">
+              <div class="form-group" style="grid-column: 1/-1;">
+                <label class="form-label">Profile Photo</label>
+                <div class="flex items-center gap-md">
+                  <div id="doctor-photo-preview"
+                    style="width: 100px; height: 100px; border-radius: 50%; overflow: hidden; background: #e9ecef; display: flex; align-items: center; justify-content: center; border: 2px solid #dee2e6; font-size: 2rem;">
+                    👨‍⚕️
+                  </div>
+                  <div style="flex: 1;">
+                    <input type="file" id="doctor-photo-upload" class="form-control" accept="image/*"
+                      onchange="previewDoctorPhoto(event)" />
+                    <small class="text-muted">Upload a new profile photo (Max 5MB)</small>
+                  </div>
+                </div>
+              </div>
+              <div class="form-group"><label class="form-label">Full Name</label><input id="name"
+                  class="form-control" />
+              </div>
+              <div class="form-group"><label class="form-label">Qualification</label><input id="qualification"
+                  class="form-control" /></div>
+              <div class="form-group"><label class="form-label">Speciality</label><input id="speciality"
+                  class="form-control" /></div>
+              <div class="form-group"><label class="form-label">Experience (Years)</label><input id="experience"
+                  class="form-control" /></div>
+            </div>
+            <div id="profile-msg" class="mt-2"></div>
+          </div>
+
+          <!-- Hospital Info (Read Only) -->
+          <div class="card bg-light border-0">
+            <div class="card-header bg-transparent">
+              <h3 class="mb-0 text-muted">🏥 Associated Hospital</h3>
+            </div>
+            <div id="hospital-info-content" class="grid grid-cols-2 gap-md text-sm">Loading...</div>
+          </div>
+
+          <!-- Change Password -->
+          <div class="card border-danger" style="border-left: 4px solid var(--danger-color);">
+            <div class="card-header">
+              <h3 class="mb-0 text-danger">Security Settings</h3>
+            </div>
+            <div class="flex gap-md items-end">
+              <div class="form-group flex-1 mb-0">
+                <label class="form-label">New Password</label>
+                <input id="new-password" type="password" class="form-control" placeholder="Min 6 characters" />
+              </div>
+              <button onclick="changePasswordDoctor()" class="btn btn-outline">Change Password</button>
+            </div>
+            <div id="change-pass-msg" class="mt-2"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Attendance Section -->
+      <div id="section-attendance" class="portal-section animate-fade-in" style="display: none;">
+        <div class="grid grid-cols-1 gap-md">
+
+          <!-- Geofence Attendance -->
+          <div class="card">
+            <div class="card-header border-0 pb-0">
+              <h3 class="font-bold">Proximity Compliance</h3>
+              <p class="text-xs text-muted">Verify your presence using hospital geofencing (100m range)</p>
+            </div>
+
+            <div class="flex gap-md p-4">
+              <button id="geofence-in-btn" onclick="geofenceCheckin()" class="btn btn-success flex-1 py-4">
+                <span id="geofence-in-text">Start Duty Shift</span>
+              </button>
+              <button id="geofence-out-btn" onclick="geofenceCheckout()"
+                class="btn btn-outline flex-1 py-4 text-danger border-danger">
+                <span id="geofence-out-text">End Duty Shift</span>
+              </button>
+            </div>
+
+            <div id="geofence-result" class="alert mx-4 mb-4" style="display: none;"></div>
+          </div>
+
+          <!-- Manual Entry -->
+          <div class="card">
+            <div class="card-header border-0 pb-0">
+              <h3 class="font-bold">Manual Log Correction</h3>
+            </div>
+            <div class="grid grid-cols-4 gap-sm items-end p-4">
+              <div class="form-group mb-0">
+                <label class="form-label">Date</label>
+                <input id="date" type="date" class="form-control" />
+              </div>
+              <div class="form-group mb-0">
+                <label class="form-label">Status</label>
+                <select id="availability" class="form-control">
+                  <option>Present</option>
+                  <option>Absent</option>
+                </select>
+              </div>
+              <div class="form-group mb-0">
+                <label class="form-label">Shift</label>
+                <select id="shift" class="form-control">
+                  <option>Morning</option>
+                  <option>Afternoon</option>
+                  <option>Evening</option>
+                  <option>Night</option>
+                </select>
+              </div>
+              <button onclick="markAttendance()" class="btn btn-primary">Submit</button>
+            </div>
+            <div id="attendance-msg" class="mt-2"></div>
+          </div>
+
+          <!-- History -->
+          <div class="card">
+            <div class="card-header flex justify-between items-center">
+              <h3 class="mb-0">Attendance History</h3>
+              <button onclick="loadAttendance()" class="btn btn-sm btn-outline">Refresh</button>
+            </div>
+            <div id="attendance-history" class="overflow-auto" style="max-height: 400px;">
+              <div class="text-center text-muted py-4">Loading history...</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script>
+    let currentDoctor = null;
+    let qrScanner = null;
+
+    // --- Initialization ---
+    document.addEventListener('DOMContentLoaded', function () {
+      document.getElementById('current-date').innerText = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+      const role = localStorage.getItem('role');
+      const stored = JSON.parse(localStorage.getItem('doctor') || 'null');
+
+      if (role === 'doctor' && stored && Object.keys(stored).length > 0) {
+        loginSuccess(stored);
+      } else {
+        document.getElementById('login-section').style.display = 'flex';
+      }
+    });
+
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('open');
+    }
+
+    function logout() {
+      localStorage.clear();
+      window.location.reload();
+    }
+
+    async function loginDoctorHere() {
+      const username = document.getElementById('doc-login-user').value.trim();
+      const password = document.getElementById('doc-login-pass').value;
+      if (!username || !password) {
+        notify('Please enter ID and Password', 'warning');
+        return;
+      }
+
+      try {
+        const res = await login('doctor', username, password);
+        localStorage.setItem('role', 'doctor');
+        localStorage.setItem('doctor', JSON.stringify(res.doctor));
+        localStorage.setItem('jwt', res.token);
+        loginSuccess(res.doctor);
+      } catch (e) {
+        const msg = document.getElementById('login-msg');
+        msg.innerText = 'Login failed: ' + e.message;
+        msg.style.display = 'block';
+      }
+    }
+
+    function loginSuccess(doctor) {
+      currentDoctor = doctor;
+      document.getElementById('login-section').style.display = 'none';
+      document.getElementById('dashboard-layout').style.display = 'flex';
+
+      // Initial Data Load
+      document.getElementById('dash-name').innerText = doctor.name || doctor.doctorId;
+      loadDashboardStats();
+
+      if (doctor.forcePasswordChange) {
+        notify('Please change your password to continue.', 'warning');
+        showSection('profile');
+      } else {
+        showSection('dashboard');
+      }
+    }
+
+    function showSection(name) {
+      document.querySelectorAll('.portal-section').forEach(el => el.style.display = 'none');
+      document.getElementById('section-' + name).style.display = 'block';
+
+      document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+      // Highlight active nav item logic here if needed
+
+      if (name === 'dashboard') loadDashboardStats();
+      if (name === 'profile') loadProfile();
+      if (name === 'attendance') {
+        document.getElementById('date').value = new Date().toISOString().split('T')[0];
+        loadAttendance();
+      }
+    }
+
+    // --- Dashboard ---
+    async function loadDashboardStats() {
+      if (!currentDoctor) return;
+      try {
+        // Load Hospital Name
+        const hospital = await api(`/api/hospital/${currentDoctor.hospitalId}`);
+        document.getElementById('dash-hospital').innerText = hospital.name || currentDoctor.hospitalId;
+
+        // Load Status
+        document.getElementById('dash-status').innerText = currentDoctor.availability || 'Unknown';
+        document.getElementById('dash-shift').innerText = currentDoctor.shift || 'Morning';
+
+        // Recent Attendance
+        const list = await api(`/api/doctors/attendance/${currentDoctor.doctorId}`);
+        const recent = list.slice(0, 5);
+        document.getElementById('dash-recent-attendance').innerHTML = recent.length ? `
+          <table style="width:100%; border-collapse: collapse;">
+            <thead>
+              <tr style="border-bottom: 1px solid var(--border-color);">
+                <th style="text-align: left; padding: 8px; font-size: 0.85rem; color: var(--text-muted);">Date</th>
+                <th style="text-align: left; padding: 8px; font-size: 0.85rem; color: var(--text-muted);">Shift</th>
+                <th style="text-align: left; padding: 8px; font-size: 0.85rem; color: var(--text-muted);">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${recent.map(a => `
+                <tr style="border-bottom: 1px solid var(--border-color);">
+                  <td style="padding: 8px;">${new Date(a.date).toLocaleDateString()}</td>
+                  <td style="padding: 8px;">${a.shift}</td>
+                  <td style="padding: 8px;"><span class="badge" style="padding: 0.25rem 0.5rem; border-radius: 4px; background: ${a.availability === 'Present' ? '#d1e7dd' : '#f8d7da'}; color: ${a.availability === 'Present' ? '#0f5132' : '#842029'}; font-size: 0.85rem;">${a.availability}</span></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        ` : '<div class="text-center text-muted py-2">No recent records</div>';
+      } catch (e) { console.error(e); }
+    }
+
+    // --- Profile ---
+    async function loadProfile() {
+      if (!currentDoctor) return;
+      ['name', 'qualification', 'speciality', 'experience'].forEach(f => {
+        const el = document.getElementById(f);
+        if (el) el.value = currentDoctor[f] || '';
+      });
+
+      // Load doctor photo preview
+      const preview = document.getElementById('doctor-photo-preview');
+      if (preview) {
+        if (currentDoctor.photoUrl) {
+          preview.innerHTML = `<img src="${currentDoctor.photoUrl.startsWith('http') ? currentDoctor.photoUrl : currentDoctor.photoUrl}" 
+               alt="Doctor Photo" 
+               style="width: 100%; height: 100%; object-fit: cover;"
+               onerror="this.onerror=null; this.style.display='none'; this.parentElement.innerHTML='👨‍⚕️';">`;
+        } else {
+          preview.innerHTML = '👨‍⚕️';
+        }
+      }
+
+      // Load Hospital Details
+      try {
+        const h = await api(`/api/hospital/${currentDoctor.hospitalId}`);
+        document.getElementById('hospital-info-content').innerHTML = `
+          <div><strong>Name:</strong> ${h.name}</div>
+          <div><strong>City:</strong> ${h.address?.city}</div>
+          <div><strong>Contact:</strong> ${h.contact}</div>
+          <div><strong>Services:</strong> ${(h.services || []).join(', ')}</div>
+        `;
+      } catch (e) { }
+    }
+
+    function previewDoctorPhoto(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      if (file.size > 5 * 1024 * 1024) {
+        notify('File too large. Maximum size is 5MB.', 'error');
+        event.target.value = '';
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        const preview = document.getElementById('doctor-photo-preview');
+        preview.innerHTML = `<img src="${e.target.result}" style="width: 100%; height: 100%; object-fit: cover;" alt="Preview">`;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function saveProfile() {
+      const body = {
+        name: document.getElementById('name').value,
+        qualification: document.getElementById('qualification').value,
+        speciality: document.getElementById('speciality').value,
+        experience: document.getElementById('experience').value
+      };
+
+      try {
+        const photoFile = document.getElementById('doctor-photo-upload').files[0];
+
+        if (photoFile) {
+          // Upload photo using FormData
+          const formData = new FormData();
+          formData.append('photo', photoFile);
+          formData.append('hospitalId', currentDoctor.hospitalId);
+
+          // Update profile with photo
+          const photoRes = await fetch(`/api/doctors/${currentDoctor.doctorId}/photo`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${getToken()}`
+            },
+            body: formData
+          });
+
+          if (!photoRes.ok) {
+            const errorData = await photoRes.json().catch(() => ({ message: 'Photo upload failed' }));
+            throw new Error(errorData.message || 'Photo upload failed');
+          }
+
+          const photoData = await photoRes.json();
+          if (photoData.doctor && photoData.doctor.photoUrl) {
+            body.photoUrl = photoData.doctor.photoUrl;
+          }
+        }
+
+        await api(`/api/doctors/${currentDoctor.doctorId}`, { method: 'PUT', body: JSON.stringify(body) });
+
+        // Update local storage
+        const updated = await api(`/api/doctors/doctor/${currentDoctor.doctorId}`);
+        currentDoctor = updated;
+        localStorage.setItem('doctor', JSON.stringify(updated));
+
+        // Update preview
+        if (updated.photoUrl) {
+          const preview = document.getElementById('doctor-photo-preview');
+          preview.innerHTML = `<img src="${updated.photoUrl.startsWith('http') ? updated.photoUrl : updated.photoUrl.startsWith('/') ? updated.photoUrl : '/uploads/' + updated.photoUrl}" 
+               alt="Doctor Photo" 
+               style="width: 100%; height: 100%; object-fit: cover;"
+               onerror="this.onerror=null; this.style.display='none'; this.parentElement.innerHTML='👨‍⚕️';">`;
+        }
+
+        notify('Profile updated successfully!', 'success');
+        document.getElementById('doctor-photo-upload').value = '';
+      } catch (e) {
+        notify('Error updating profile: ' + e.message, 'error');
+      }
+    }
+
+    async function changePasswordDoctor() {
+      const newPass = document.getElementById('new-password').value;
+      if (newPass.length < 6) {
+        notify('Password must be at least 6 characters long', 'warning');
+        return;
+      }
+      try {
+        await changePassword('doctor', currentDoctor.doctorId, newPass);
+        currentDoctor.forcePasswordChange = false;
+        localStorage.setItem('doctor', JSON.stringify(currentDoctor));
+        document.getElementById('change-pass-msg').innerHTML = '<div class="alert alert-success">Password changed!</div>';
+        document.getElementById('new-password').value = '';
+      } catch (e) {
+        document.getElementById('change-pass-msg').innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
+      }
+    }
+
+    // --- Attendance ---
+    async function loadAttendance() {
+      try {
+        const list = await api(`/api/doctors/attendance/${currentDoctor.doctorId}`);
+        document.getElementById('attendance-history').innerHTML = `
+          <table style="width:100%; border-collapse: collapse;">
+            <thead>
+              <tr style="background: var(--bg-body); border-bottom: 2px solid var(--border-color);">
+                <th class="p-2 text-left">Date</th>
+                <th class="p-2 text-left">In</th>
+                <th class="p-2 text-left">Out</th>
+                <th class="p-2 text-left">Hours</th>
+                <th class="p-2 text-left">Method</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${list.map(a => `
+                <tr style="border-bottom: 1px solid var(--border-color);">
+                  <td class="p-2">${new Date(a.date).toLocaleDateString()}</td>
+                  <td class="p-2">${a.checkIn ? new Date(a.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
+                  <td class="p-2">${a.checkOut ? new Date(a.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
+                  <td class="p-2"><strong>${a.totalHours || '0'}h</strong></td>
+                  <td class="p-2 text-muted text-sm">${a.method || 'Manual'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } catch (e) { console.error(e); }
+    }
+
+    async function markAttendance() {
+      const body = {
+        doctorId: currentDoctor.doctorId,
+        date: document.getElementById('date').value,
+        availability: document.getElementById('availability').value,
+        shift: document.getElementById('shift').value,
+        markedBy: 'Doctor',
+        method: 'Manual'
+      };
+      try {
+        await api('/api/doctors/attendance', { method: 'POST', body: JSON.stringify(body) });
+        loadAttendance();
+        document.getElementById('attendance-msg').innerHTML = '<div class="alert alert-success">Attendance marked!</div>';
+      } catch (e) {
+        document.getElementById('attendance-msg').innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
+      }
+    }
+
+    // --- Geofence Attendance ---
+    async function geofenceCheckin() {
+      const btn = document.getElementById('geofence-in-btn');
+      const btnText = document.getElementById('geofence-in-text');
+      const resultEl = document.getElementById('geofence-result');
+
+      if (!navigator.geolocation) {
+        notify('Geolocation is not supported by your browser', 'error');
+        return;
+      }
+
+      btn.disabled = true;
+      btnText.innerText = '⌛ Locating...';
+      resultEl.style.display = 'none';
+
+      navigator.geolocation.getCurrentPosition(async (position) => {
+        const { latitude, longitude } = position.coords;
+        btnText.innerText = '⌛ Verifying...';
+
+        try {
+          const res = await api('/api/doctors/geofence-checkin', {
+            method: 'POST',
+            body: JSON.stringify({
+              doctorId: currentDoctor.doctorId,
+              lat: latitude,
+              lng: longitude
+            })
+          });
+
+          if (res.success) {
+            resultEl.className = 'alert alert-success mt-2';
+            resultEl.innerHTML = `✅ Checked-In Successfully! <br><small>Distance: ${(res.distance * 1000).toFixed(0)}m from hospital (Max: 100m)</small>`;
+            resultEl.style.display = 'block';
+            btnText.innerText = '✅ In';
+
+            // Re-load data
+            currentDoctor.availability = 'Available';
+            localStorage.setItem('doctor', JSON.stringify(currentDoctor));
+            loadDashboardStats();
+            loadAttendance();
+            notify('Checked-In via Geofence', 'success');
+          } else {
+            throw new Error(res.message);
+          }
+        } catch (e) {
+          resultEl.className = 'alert alert-danger mt-2';
+          resultEl.innerText = '❌ ' + e.message;
+          resultEl.style.display = 'block';
+          btnText.innerText = '🚀 Try Again';
+          btn.disabled = false;
+        }
+      }, (err) => {
+        resultEl.className = 'alert alert-danger mt-2';
+        resultEl.innerText = '❌ Location error: ' + err.message;
+        resultEl.style.display = 'block';
+        btnText.innerText = '🚀 Try Again';
+        btn.disabled = false;
+      }, {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      });
+    }
+
+    async function geofenceCheckout() {
+      const btn = document.getElementById('geofence-out-btn');
+      const btnText = document.getElementById('geofence-out-text');
+      const resultEl = document.getElementById('geofence-result');
+
+      if (!navigator.geolocation) {
+        notify('Geolocation is not supported by your browser', 'error');
+        return;
+      }
+
+      btn.disabled = true;
+      btnText.innerText = '⌛ Locating...';
+      resultEl.style.display = 'none';
+
+      navigator.geolocation.getCurrentPosition(async (position) => {
+        const { latitude, longitude } = position.coords;
+        btnText.innerText = '⌛ Verifying...';
+
+        try {
+          const res = await api('/api/doctors/geofence-checkout', {
+            method: 'POST',
+            body: JSON.stringify({
+              doctorId: currentDoctor.doctorId,
+              lat: latitude,
+              lng: longitude
+            })
+          });
+
+          if (res.success) {
+            resultEl.className = 'alert alert-danger mt-2';
+            resultEl.innerHTML = `📴 Checked-Out Successfully! <br><small>Total Hours: ${res.attendance.totalHours}h</small>`;
+            resultEl.style.display = 'block';
+            btnText.innerText = '🚪 Out';
+
+            // Re-load data
+            currentDoctor.availability = 'Not Available';
+            localStorage.setItem('doctor', JSON.stringify(currentDoctor));
+            loadDashboardStats();
+            loadAttendance();
+            notify('Checked-Out via Geofence', 'warning');
+
+            // Re-enable in button if needed
+            document.getElementById('geofence-in-btn').disabled = false;
+            document.getElementById('geofence-in-text').innerText = '🚀 Check-In';
+          } else {
+            throw new Error(res.message);
+          }
+        } catch (e) {
+          resultEl.className = 'alert alert-danger mt-2';
+          resultEl.innerText = '❌ ' + e.message;
+          resultEl.style.display = 'block';
+          btnText.innerText = '🚪 Try Again';
+          btn.disabled = false;
+        }
+      }, (err) => {
+        resultEl.className = 'alert alert-danger mt-2';
+        resultEl.innerText = '❌ Location error: ' + err.message;
+        resultEl.style.display = 'block';
+        btnText.innerText = '🚪 Try Again';
+        btn.disabled = false;
+      }, {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      });
+    }
+
+  </script>
+</body>
+
+</html>

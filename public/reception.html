@@ -1,0 +1,2492 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Reception Portal - RapidCare</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script defer src="/js/client.js"></script>
+  <script defer src="/js/reset-db.js"></script>
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <style>
+    /* Dashboard Layout */
+    .dashboard-container {
+      display: flex;
+      min-height: 100vh;
+      background-color: var(--bg-body);
+    }
+
+    .sidebar {
+      width: 280px;
+      background-color: #fff;
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      height: 100vh;
+      overflow-y: auto;
+      z-index: 100;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .sidebar-header {
+      padding: var(--spacing-lg);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+    }
+
+    .sidebar-nav {
+      padding: var(--spacing-md);
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-xs);
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+      padding: 0.75rem 1rem;
+      border-radius: var(--border-radius);
+      color: var(--text-muted);
+      font-weight: 500;
+      cursor: pointer;
+      transition: var(--transition-base);
+    }
+
+    .nav-item:hover {
+      background-color: rgba(11, 110, 253, 0.05);
+      color: var(--primary-color);
+      text-decoration: none;
+    }
+
+    .nav-item.active {
+      background-color: rgba(11, 110, 253, 0.1);
+      color: var(--primary-color);
+      font-weight: 600;
+    }
+
+    .main-content {
+      flex: 1;
+      margin-left: 280px;
+      padding: var(--spacing-lg);
+      max-width: 1600px;
+    }
+
+    /* Stats Cards */
+    .stat-card {
+      background: white;
+      padding: var(--spacing-lg);
+      border-radius: var(--border-radius-lg);
+      border: 1px solid rgba(0, 0, 0, 0.05);
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-md);
+      box-shadow: var(--shadow-sm);
+      transition: var(--transition-base);
+    }
+
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .stat-icon {
+      width: 56px;
+      height: 56px;
+      border-radius: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.75rem;
+    }
+
+    /* Tables */
+    .table-container {
+      overflow-x: auto;
+      background: white;
+      border-radius: var(--border-radius);
+      border: 1px solid var(--border-color);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      padding: 1rem;
+      border-bottom: 1px solid var(--border-color);
+      text-align: left;
+    }
+
+    th {
+      background-color: var(--bg-body);
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    /* Mobile Sidebar Toggle */
+    .menu-toggle {
+      display: none;
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      z-index: 1000;
+      background: white;
+      border: 1px solid var(--border-color);
+      padding: 0.5rem;
+      border-radius: var(--border-radius);
+      box-shadow: var(--shadow-sm);
+    }
+
+    @media (max-width: 768px) {
+      .sidebar {
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+      }
+
+      .sidebar.open {
+        transform: translateX(0);
+      }
+
+      .main-content {
+        margin-left: 0;
+        padding: var(--spacing-md);
+      }
+
+      .menu-toggle {
+        display: block;
+      }
+    }
+
+    /* Toast Notifications */
+    .toast-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 9999;
+      pointer-events: none;
+    }
+
+    .toast {
+      background: white;
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin-bottom: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 300px;
+      max-width: 400px;
+      pointer-events: auto;
+      animation: slideIn 0.3s ease-out;
+      border-left: 4px solid #0b6efd;
+    }
+
+    .toast.success {
+      border-left-color: #198754;
+    }
+
+    .toast.error {
+      border-left-color: #dc3545;
+    }
+
+    .toast.warning {
+      border-left-color: #ffc107;
+    }
+
+    .toast.info {
+      border-left-color: #0dcaf0;
+    }
+
+    .toast-icon {
+      font-size: 24px;
+      flex-shrink: 0;
+    }
+
+    .toast-content {
+      flex: 1;
+    }
+
+    .toast-title {
+      font-weight: 600;
+      margin-bottom: 4px;
+      color: #212529;
+    }
+
+    .toast-message {
+      font-size: 14px;
+      color: #6c757d;
+    }
+
+    .toast-close {
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      color: #6c757d;
+      padding: 0;
+      line-height: 1;
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes slideOut {
+      from {
+        transform: translateX(0);
+        opacity: 1;
+      }
+
+      to {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Login Section -->
+  <div id="login-section" class="container"
+    style="display: none; min-height: 100vh; display: flex; align-items: center; justify-content: center;">
+    <div class="card glass" style="width: 100%; max-width: 400px; border-top: 4px solid var(--primary-color);">
+      <div class="card-header text-center border-0 pb-0">
+        <img src="/images/hospital.png" alt="Hospital" style="width: 64px; height: 64px; margin-bottom: 1rem;">
+        <h3 class="text-primary">Reception Portal</h3>
+        <p class="text-muted">Please login to manage hospital operations</p>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Hospital ID</label>
+        <input id="login-hospitalId" class="form-control" placeholder="e.g., HOSP001" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input id="login-password" type="password" class="form-control" placeholder="••••••••" />
+      </div>
+      <button onclick="loginHospital()" class="btn btn-primary btn-block">Login</button>
+      <div id="login-msg" class="alert alert-danger mt-3" style="display:none;"></div>
+      <div class="text-center mt-3">
+        <a href="/" class="text-sm text-muted">Back to Home</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dashboard Layout -->
+  <div id="dashboard-layout" class="dashboard-container" style="display: none;">
+
+    <!-- Mobile Toggle -->
+    <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <img src="/images/logo.png" alt="Logo" style="height: 32px;">
+        <div>
+          <h3 class="text-primary mb-0" style="font-size: 1.2rem;">RapidCare</h3>
+          <small class="text-muted">Reception Panel</small>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        <a class="nav-item active" onclick="showSection('dashboard')">
+          <span>📊</span> Dashboard
+        </a>
+        <a class="nav-item" onclick="showSection('hospital-info')">
+          <span>🏥</span> Hospital Info
+        </a>
+        <a class="nav-item" onclick="showSection('beds')">
+          <span>🛏️</span> Bed Management
+        </a>
+        <a class="nav-item" onclick="showSection('doctors')">
+          <span>👨‍⚕️</span> Doctors
+        </a>
+        <a class="nav-item" onclick="showSection('ambulances')">
+          <span>🚑</span> Ambulances
+        </a>
+        <a class="nav-item" onclick="showSection('nurses')">
+          <span>👩‍⚕️</span> Nurses
+        </a>
+        <a class="nav-item" onclick="showSection('emergencies')">
+          <span>🚨</span> Emergencies
+        </a>
+        <a class="nav-item" onclick="showSection('bloodbank')">
+          <span>🩸</span> Blood Bank
+        </a>
+        <a class="nav-item" onclick="showSection('announcements')">
+          <span>📢</span> Announcements
+        </a>
+        <a class="nav-item" onclick="showSection('call-logs')">
+          <span>📞</span> Call Logs
+        </a>
+        <a class="nav-item" onclick="showSection('dbms')">
+          <span>🗄️</span> Database View
+        </a>
+        <div style="margin-top: auto; border-top: 1px solid var(--border-color); padding-top: var(--spacing-md);">
+          <a class="nav-item text-danger" onclick="logout()">
+            <span>🚪</span> Logout
+          </a>
+        </div>
+      </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+      <!-- Dashboard Overview -->
+      <div id="section-dashboard" class="portal-section animate-fade-in">
+        <h2 class="mb-3">Dashboard Overview</h2>
+        <div class="grid grid-cols-3 grid-auto-fit gap-md mb-4">
+          <div class="stat-card">
+            <div class="stat-icon" style="background: #e7f1ff; color: #0b6efd;">🛏️</div>
+            <div>
+              <div class="text-muted text-sm">Beds Available</div>
+              <h3 class="mb-0" id="dash-beds">Loading...</h3>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background: #d1e7dd; color: #0f5132;">👨‍⚕️</div>
+            <div>
+              <div class="text-muted text-sm">Doctors On Duty</div>
+              <h3 class="mb-0" id="dash-docs">Loading...</h3>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon" style="background: #fff3cd; color: #856404;">🚑</div>
+            <div>
+              <div class="text-muted text-sm">Ambulances Active</div>
+              <h3 class="mb-0" id="dash-ambs">Loading...</h3>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header flex justify-between items-center border-0 pb-0">
+            <h3 class="mb-0">Recent Emergency Requests</h3>
+            <button class="btn btn-outline btn-sm" onclick="showSection('emergencies')">View All</button>
+          </div>
+          <div class="table-container mt-3 border-0">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Patient</th>
+                  <th>Source</th>
+                  <th>Type</th>
+                  <th>Status</th>
+                  <th>Time</th>
+                </tr>
+              </thead>
+              <tbody id="dash-recent-emergencies">
+                <tr>
+                  <td colspan="4" class="text-center text-muted py-4">No recent emergencies</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hospital Info -->
+      <div id="section-hospital-info" class="portal-section animate-fade-in" style="display: none;">
+        <div class="card">
+          <div class="card-header flex justify-between items-center">
+            <h3 class="mb-0">Hospital Profile</h3>
+            <button class="btn btn-primary" onclick="saveHospital()">Save Changes</button>
+          </div>
+
+          <div class="grid grid-cols-2 gap-md mt-3">
+            <div class="form-group">
+              <label class="form-label">Hospital ID</label>
+              <input id="h-id" class="form-control" disabled />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Hospital Name</label>
+              <input id="h-name" class="form-control" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Contact Number</label>
+              <input id="h-contact" class="form-control" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">State</label>
+              <input id="h-state" class="form-control" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">District</label>
+              <input id="h-district" class="form-control" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">City</label>
+              <input id="h-city" class="form-control" />
+            </div>
+            <div class="form-group" style="grid-column: 1/-1;">
+              <label class="form-label">Street Address</label>
+              <input id="h-street" class="form-control" />
+            </div>
+            <div class="form-group" style="grid-column: 1/-1;">
+              <label class="form-label">📍 Google Maps Link *</label>
+              <input id="h-googleMapUrl" type="url" class="form-control"
+                placeholder="https://maps.google.com/?q=21.2564272,81.5795215 or https://maps.google.com/@21.2564272,81.5795215" />
+              <small class="text-muted">Enter the Google Maps URL for this hospital location. Required for nearest
+                hospital feature.</small>
+            </div>
+
+            <div class="form-group" style="grid-column: 1/-1;">
+              <label class="form-label">Services (comma separated)</label>
+              <input id="h-services" class="form-control" placeholder="Emergency, Cardiology, etc." />
+            </div>
+
+            <!-- Collapsible details -->
+            <div style="grid-column: 1/-1;">
+              <details class="bg-light rounded p-3">
+                <summary class="cursor-pointer font-weight-bold text-primary">More Details (Facilities, Insurance, etc.)
+                </summary>
+                <div class="grid grid-cols-2 gap-md mt-3">
+                  <div class="form-group"><label class="form-label">Tests</label><input id="h-tests"
+                      class="form-control" /></div>
+                  <div class="form-group"><label class="form-label">Insurance</label><input id="h-insurance"
+                      class="form-control" /></div>
+                  <div class="form-group"><label class="form-label">Procedures</label><input id="h-procedures"
+                      class="form-control" /></div>
+                  <div class="form-group"><label class="form-label">Facilities</label><input id="h-facilities"
+                      class="form-control" /></div>
+                  <div class="form-group"><label class="form-label">Management</label><input id="h-management"
+                      class="form-control" /></div>
+                  <div class="form-group"><label class="form-label">Highlights</label><input id="h-highlights"
+                      class="form-control" /></div>
+                  <div class="form-group"><label class="form-label">Treatment</label><input id="h-treatment"
+                      class="form-control" /></div>
+                  <div class="form-group"><label class="form-label">Surgery</label><input id="h-surgery"
+                      class="form-control" /></div>
+                  <div class="form-group"><label class="form-label">Therapy</label><input id="h-therapy"
+                      class="form-control" /></div>
+                </div>
+              </details>
+            </div>
+          </div>
+        </div>
+
+        <!-- Hospital Gallery Management -->
+        <div class="card mt-3">
+          <div class="card-header">
+            <h3 class="mb-0">🖼️ Hospital Gallery</h3>
+          </div>
+          <div class="mt-3">
+            <div class="form-group">
+              <label class="form-label">Upload Hospital Photos (Max 10 images, 5MB each)</label>
+              <input type="file" id="gallery-upload" class="form-control" multiple accept="image/*"
+                onchange="previewGalleryImages()" />
+              <small class="text-muted">Accepted formats: JPG, PNG, GIF, WebP</small>
+            </div>
+            <button class="btn btn-primary mt-2" onclick="uploadGallery()" id="upload-gallery-btn">
+              📤 Upload Photos
+            </button>
+
+            <!-- Gallery Preview -->
+            <div id="gallery-preview" class="mt-3" style="display: none;">
+              <strong>Selected Images:</strong>
+              <div id="preview-grid" class="flex flex-wrap gap-sm mt-2"></div>
+            </div>
+
+            <!-- Existing Gallery -->
+            <div class="mt-4">
+              <strong>Current Gallery Photos:</strong>
+              <div id="current-gallery" class="flex flex-wrap gap-sm mt-2">
+                <small class="text-muted">No photos uploaded yet</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bed Management -->
+      <div id="section-beds" class="portal-section animate-fade-in" style="display: none;">
+        <div class="grid grid-cols-1 gap-md">
+          <!-- Create Beds -->
+          <div class="card">
+            <div class="card-header">
+              <h3 class="mb-0">Register New Beds</h3>
+            </div>
+            <div class="grid grid-cols-4 gap-sm items-end mt-3">
+              <div class="form-group mb-0">
+                <label class="form-label text-xs">Ward No.</label>
+                <input id="ward" class="form-control" placeholder="e.g. A1" />
+              </div>
+              <div class="form-group mb-0">
+                <label class="form-label text-xs">Type</label>
+                <select id="bedType" class="form-control">
+                  <option>General</option>
+                  <option>ICU</option>
+                  <option>Private</option>
+                  <option>Emergency</option>
+                </select>
+              </div>
+              <div class="form-group mb-0 flex gap-sm">
+                <div>
+                  <label class="form-label text-xs">Start #</label>
+                  <input id="start" type="number" class="form-control" placeholder="1" />
+                </div>
+                <div>
+                  <label class="form-label text-xs">End #</label>
+                  <input id="end" type="number" class="form-control" placeholder="10" />
+                </div>
+              </div>
+              <button onclick="createBeds()" class="btn btn-primary" style="height: 42px;">Create Beds</button>
+            </div>
+            <div id="beds-status" class="mt-2 text-success"></div>
+          </div>
+
+          <!-- Bed List -->
+          <div class="card">
+            <div class="card-header flex justify-between items-center flex-wrap gap-sm">
+              <h3 class="mb-0">Bed Status</h3>
+              <div class="flex gap-sm">
+                <input id="bed-search" class="form-control" placeholder="Search bed..." style="width: 150px;" />
+                <button onclick="searchBeds()" class="btn btn-outline">Search</button>
+                <button onclick="openPrintModal()" class="btn btn-info">Print Options</button>
+              </div>
+            </div>
+            <div id="bed-summary" class="alert alert-info mb-3 mt-3">Loading summary...</div>
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Type</th>
+                    <th>Ward</th>
+                    <th>Bed No.</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="beds"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Doctors Section -->
+      <div id="section-doctors" class="portal-section animate-fade-in" style="display: none;">
+        <div class="grid grid-cols-1 gap-md">
+          <!-- Register Doctor -->
+          <div class="card">
+            <div class="card-header">
+              <h3 class="mb-0">Register Doctor</h3>
+            </div>
+            <div class="grid grid-cols-3 gap-md mt-3">
+              <div class="form-group"><label class="form-label">Doctor ID</label><input id="doc-id"
+                  class="form-control" /></div>
+              <div class="form-group"><label class="form-label">Name</label><input id="doc-name" class="form-control" />
+              </div>
+              <div class="form-group"><label class="form-label">Speciality</label><input id="doc-spec"
+                  class="form-control" /></div>
+              <div class="form-group"><label class="form-label">Qualification</label><input id="doc-qual"
+                  class="form-control" /></div>
+              <div class="form-group"><label class="form-label">Experience</label><input id="doc-exp"
+                  class="form-control" /></div>
+              <div class="form-group"><label class="form-label">Upload Photo</label><input type="file" id="doc-photo"
+                  class="form-control" accept="image/*" /></div>
+            </div>
+            <button onclick="createDoctor()" class="btn btn-primary mt-2">Register Doctor</button>
+          </div>
+
+          <!-- Attendance QR -->
+          <div class="card bg-light border-0">
+            <div class="card-header flex justify-between items-center bg-transparent">
+              <h4 class="mb-0">🔐 Attendance QR Codes</h4>
+              <div>
+                <button onclick="generateHospitalQR()" id="gen-qr-btn" class="btn btn-sm btn-outline">Generate
+                  QR</button>
+                <button onclick="printHospitalQR()" id="print-qr-btn" class="btn btn-success btn-sm"
+                  style="display:none;">Print PDF</button>
+              </div>
+            </div>
+            <div id="qr-display" style="display:none;" class="text-center mt-3">
+              <div class="flex justify-center gap-lg">
+                <div class="text-center">
+                  <img id="present-qr-img"
+                    style="width:150px; height:150px; border:1px solid #ddd; background:white; padding: 10px; border-radius: 8px;" />
+                  <p class="mt-2 font-bold text-success">CHECK IN</p>
+                </div>
+                <div class="text-center">
+                  <img id="absent-qr-img"
+                    style="width:150px; height:150px; border:1px solid #ddd; background:white; padding: 10px; border-radius: 8px;" />
+                  <p class="mt-2 font-bold text-danger">CHECK OUT</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Doctor List -->
+          <div class="card">
+            <div class="card-header">
+              <h3 class="mb-0">Doctor List & Attendance</h3>
+            </div>
+            <div id="doctors-list" class="grid grid-cols-2 gap-md mt-3"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Edit Attendance Modal -->
+      <div id="attendance-modal" class="modal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center;">
+        <div class="bg-white p-4 rounded shadow-lg" style="width: 90%; max-width: 500px;">
+          <div class="flex justify-between items-center mb-3 border-bottom pb-2">
+            <h3 class="mb-0">✏️ Edit Doctor Attendance</h3>
+            <button onclick="closeAttendanceModal()" class="btn btn-sm btn-outline">✕</button>
+          </div>
+          <div id="attendance-form">
+            <div class="form-group">
+              <label class="form-label">Doctor</label>
+              <input id="edit-doctor-name" class="form-control" disabled />
+              <input type="hidden" id="edit-doctor-id" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Date</label>
+              <input type="date" id="edit-attendance-date" class="form-control" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Shift</label>
+              <select id="edit-attendance-shift" class="form-control">
+                <option value="Morning">Morning</option>
+                <option value="Evening">Evening</option>
+                <option value="Night">Night</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Status</label>
+              <select id="edit-attendance-status" class="form-control">
+                <option value="Present">Present</option>
+                <option value="Absent">Absent</option>
+                <option value="Leave">Leave</option>
+              </select>
+            </div>
+
+
+            <div class="flex gap-md mt-4">
+              <button onclick="saveAttendance()" class="btn btn-success" style="flex: 1;">💾 Save</button>
+              <button onclick="closeAttendanceModal()" class="btn btn-outline" style="flex: 1;">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Admit Patient Modal -->
+      <div id="admit-modal" class="modal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center;">
+        <div class="bg-white p-4 rounded shadow-lg" style="width: 90%; max-width: 500px;">
+          <div class="flex justify-between items-center mb-3 border-bottom pb-2">
+            <h3 class="mb-0">🛏️ Admit Patient</h3>
+            <button onclick="closeAdmitModal()" class="btn btn-sm btn-outline">✕</button>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Select Bed</label>
+            <select id="admit-bed-select" class="form-control">
+              <option value="">Loading beds...</option>
+            </select>
+          </div>
+          <input type="hidden" id="admit-emergency-id" />
+          <div class="flex justify-end mt-3 gap-sm">
+            <button onclick="closeAdmitModal()" class="btn btn-outline">Cancel</button>
+            <button onclick="confirmAdmit()" class="btn btn-primary">Admit</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- QR Scanner Modal -->
+      <div id="scanner-modal" class="modal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 3000; align-items: center; justify-content: center;">
+        <div class="bg-white p-4 rounded shadow-lg" style="width: 90%; max-width: 500px; position: relative;">
+          <button onclick="stopScanner()"
+            style="position: absolute; top: 10px; right: 10px; border: none; background: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
+          <h3 class="mb-3 text-center">Scan Bed QR Code</h3>
+          <div id="reader" style="width: 100%; min-height: 300px; background: #000;"></div>
+          <p class="text-center text-muted mt-3 text-sm">Point camera at a bed QR code or upload an image.</p>
+          <div class="text-center mt-2">
+            <button onclick="stopScanner()" class="btn btn-outline">Close Scanner</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ambulances Section -->
+      <div id="section-ambulances" class="portal-section animate-fade-in" style="display: none;">
+        <div class="grid grid-cols-1 gap-md">
+          <div class="card">
+            <div class="card-header">
+              <h3 class="mb-0">Register Ambulance</h3>
+            </div>
+            <div class="grid grid-cols-3 gap-md mt-3">
+              <div class="form-group"><label class="form-label">Ambulance ID</label><input id="amb-id"
+                  class="form-control" /></div>
+              <div class="form-group"><label class="form-label">Vehicle No.</label><input id="veh-num"
+                  class="form-control" /></div>
+              <div class="form-group"><label class="form-label">EMT Name</label><input id="amb-emt-name"
+                  class="form-control" /></div>
+              <div class="form-group"><label class="form-label">EMT Mobile</label><input id="amb-emt-mobile"
+                  class="form-control" /></div>
+              <div class="form-group"><label class="form-label">Pilot Name</label><input id="amb-pilot-name"
+                  class="form-control" /></div>
+              <div class="form-group"><label class="form-label">Pilot Mobile</label><input id="amb-pilot-mobile"
+                  class="form-control" /></div>
+            </div>
+            <button onclick="createAmbulance()" class="btn btn-primary mt-2">Register Ambulance</button>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h3 class="mb-0">Fleet Status</h3>
+            </div>
+            <div id="ambulances-cards" class="grid grid-cols-3 gap-md mt-3"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Nurses Section -->
+      <div id="section-nurses" class="portal-section animate-fade-in" style="display: none;">
+        <div class="grid grid-cols-1 gap-md">
+          <div class="card">
+            <div class="card-header">
+              <h3 class="mb-0">Register Nurse</h3>
+            </div>
+            <div class="grid grid-cols-3 gap-md mt-3">
+              <div class="form-group"><label class="form-label">Nurse ID</label><input id="nurse-id"
+                  class="form-control" placeholder="NURSE001" /></div>
+              <div class="form-group"><label class="form-label">Full Name</label><input id="nurse-name"
+                  class="form-control" /></div>
+              <div class="form-group"><label class="form-label">Mobile Number</label><input id="nurse-mobile"
+                  class="form-control" /></div>
+            </div>
+            <button onclick="createNurse()" class="btn btn-primary mt-2">Register Nurse</button>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h3 class="mb-0">Nurse Staff List</h3>
+            </div>
+            <div id="nurses-list" class="mt-3"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Emergencies Section -->
+      <div id="section-emergencies" class="portal-section animate-fade-in" style="display: none;">
+        <div class="flex justify-between items-center mb-4">
+          <h2>🚨 Emergency Requests</h2>
+          <div class="flex gap-sm">
+            <button onclick="filterEmergencies('all')" class="btn btn-outline btn-sm active"
+              id="filter-all">All</button>
+            <button onclick="filterEmergencies('pending')" class="btn btn-outline btn-sm"
+              id="filter-pending">Pending</button>
+            <button onclick="filterEmergencies('accepted')" class="btn btn-outline btn-sm"
+              id="filter-accepted">Accepted</button>
+          </div>
+        </div>
+
+        <div id="emergency-stats" class="grid grid-cols-4 gap-md mb-4">
+          <div class="card text-center py-3" style="border-left: 4px solid #ffc107;">
+            <h3 id="pending-count" class="mb-0 text-warning">0</h3>
+            <small class="text-muted">Pending</small>
+          </div>
+          <div class="card text-center py-3" style="border-left: 4px solid #198754;">
+            <h3 id="accepted-count" class="mb-0 text-success">0</h3>
+            <small class="text-muted">Accepted</small>
+          </div>
+          <div class="card text-center py-3" style="border-left: 4px solid #dc3545;">
+            <h3 id="rejected-count" class="mb-0 text-danger">0</h3>
+            <small class="text-muted">Rejected</small>
+          </div>
+          <div class="card text-center py-3" style="border-left: 4px solid #0dcaf0;">
+            <h3 id="transferred-count" class="mb-0 text-info">0</h3>
+            <small class="text-muted">Transferred</small>
+          </div>
+        </div>
+
+        <div id="emergencies-cards" class="grid grid-cols-1 gap-md"></div>
+      </div>
+
+      <!-- Blood Bank Section -->
+      <div id="section-bloodbank" class="portal-section animate-fade-in" style="display: none;">
+        <div class="card">
+          <div class="card-header flex justify-between items-center">
+            <h3 class="mb-0">🩸 Blood Bank Inventory</h3>
+            <button onclick="openBloodModal()" class="btn btn-danger">Update Stock</button>
+          </div>
+          <div class="table-container mt-3">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Blood Group</th>
+                  <th>Units Available</th>
+                  <th>Last Updated</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="blood-list"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Blood Bank Update Modal -->
+      <div id="blood-bank-modal" class="modal"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center;">
+        <div class="bg-white p-4 rounded shadow-lg" style="width: 90%; max-width: 400px;">
+          <div class="flex justify-between items-center mb-3 border-bottom pb-2">
+            <h3 class="mb-0" id="blood-modal-title">🩸 Update Blood Stock</h3>
+            <button onclick="closeBloodModal()" class="btn btn-sm btn-outline">✕</button>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Blood Group</label>
+            <select id="blood-group-select" class="form-control">
+              <option value="A+">A+</option>
+              <option value="A-">A-</option>
+              <option value="B+">B+</option>
+              <option value="B-">B-</option>
+              <option value="AB+">AB+</option>
+              <option value="AB-">AB-</option>
+              <option value="O+">O+</option>
+              <option value="O-">O-</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Units Available</label>
+            <input type="number" id="blood-units-input" class="form-control" placeholder="0" min="0" />
+          </div>
+          <div class="flex gap-md mt-4">
+            <button onclick="saveBloodStock()" class="btn btn-danger" style="flex: 1;">💾 Save Stock</button>
+            <button onclick="closeBloodModal()" class="btn btn-outline" style="flex: 1;">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Announcements Section -->
+      <div id="section-announcements" class="portal-section animate-fade-in" style="display: none;">
+        <div class="grid grid-cols-1 gap-md">
+          <div class="card">
+            <div class="card-header">
+              <h3 class="mb-0">📢 Create Announcement</h3>
+            </div>
+            <div class="grid grid-cols-2 gap-md mt-3">
+              <div class="form-group" style="grid-column: 1/-1;">
+                <label>Message</label>
+                <input id="ann-msg" class="form-control" placeholder="e.g. Free Eye Checkup Camp on Sunday" />
+              </div>
+              <div class="form-group">
+                <label>Severity</label>
+                <select id="ann-severity" class="form-control">
+                  <option value="Info">Info</option>
+                  <option value="Warning">Warning</option>
+                  <option value="Critical">Critical</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Duration (Hours)</label>
+                <input id="ann-duration" type="number" class="form-control" value="24" />
+              </div>
+            </div>
+            <button onclick="postAnnouncement()" class="btn btn-primary mt-2">Post Announcement</button>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h3 class="mb-0">Active Announcements</h3>
+            </div>
+            <div id="announcement-list" class="mt-3"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Call Logs Section -->
+      <div id="section-call-logs" class="portal-section animate-fade-in" style="display: none;">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="mb-0">📞 Call Logs</h3>
+          </div>
+          <div class="table-container mt-3">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Caller Name</th>
+                  <th>Mobile</th>
+                  <th>Reason</th>
+                  <th>Time</th>
+                </tr>
+              </thead>
+              <tbody id="call-logs-list"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- DBMS Section -->
+      <div id="section-dbms" class="portal-section animate-fade-in" style="display: none;">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="mb-0">Database View</h3>
+            <p class="text-muted mb-0">Direct access to hospital data tables.</p>
+          </div>
+          <div class="grid grid-cols-1 gap-md mt-3">
+            <details class="card border" style="padding: 0;">
+              <summary class="card-header cursor-pointer hover:bg-light font-weight-bold">🏥 Hospital Data</summary>
+              <div id="dbms-hospital" class="p-3 bg-light" style="overflow-x: auto;">
+                <div id="hospital-data-view"></div>
+              </div>
+            </details>
+            <details class="card border" style="padding: 0;">
+              <summary class="card-header cursor-pointer hover:bg-light font-weight-bold">👨‍⚕️ Doctors Data</summary>
+              <div id="dbms-doctors" class="p-3 bg-light" style="overflow-x: auto;">
+                <div id="doctors-data-view"></div>
+              </div>
+            </details>
+            <details class="card border" style="padding: 0;">
+              <summary class="card-header cursor-pointer hover:bg-light font-weight-bold">🛏️ Beds Data</summary>
+              <div id="dbms-beds" class="p-3 bg-light" style="overflow-x: auto;">
+                <div id="beds-data-view"></div>
+              </div>
+            </details>
+          </div>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- Print Options Modal -->
+    <div id="print-modal" class="modal"
+      style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center;">
+      <div class="card glass shadow-lg p-4" style="width: 400px; border-top: 4px solid var(--primary-color);">
+        <h3 class="mb-3">🖨️ Print Bed QR Codes</h3>
+        <p class="text-xs text-muted mb-4">Select filters for mass printing. HTML mode provides larger, higher-quality
+          labels.</p>
+        <div class="form-group">
+          <label class="form-label">Ward Number</label>
+          <select id="print-ward" class="form-control">
+            <option value="all">All Wards</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Bed Type</label>
+          <select id="print-type" class="form-control">
+            <option value="all">All Types</option>
+          </select>
+        </div>
+        <div class="flex flex-col gap-sm mt-4">
+          <button onclick="submitPrint('html')" class="btn btn-primary btn-block">🌐 Print HTML (Recommended)</button>
+          <button onclick="submitPrint('pdf')" class="btn btn-outline btn-block mt-2">📄 Download PDF</button>
+          <button onclick="closePrintModal()" class="btn btn-link btn-block text-muted mt-2">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ambulance Rejection Modal -->
+    <div id="rejection-modal" class="modal"
+      style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center;">
+      <div class="bg-white p-4 rounded shadow-lg" style="width: 500px; max-width: 90%;">
+        <div class="flex justify-between items-center mb-3 border-bottom pb-2">
+          <h3 class="mb-0 text-danger">🚫 Reject Ambulance Request</h3>
+          <button onclick="closeRejectionModal()" class="btn btn-sm btn-outline">✕</button>
+        </div>
+
+        <input type="hidden" id="rejection-emergency-id" />
+
+        <div class="form-group">
+          <label class="form-label">Reason for Rejection <span class="text-danger">*</span></label>
+          <textarea id="rejection-reason" class="form-control" rows="3"
+            placeholder="Please provide a clear reason for rejection..." required></textarea>
+          <small class="text-muted">This will be sent to the ambulance team</small>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Suggest Alternate Hospitals</label>
+          <input type="text" id="rejection-alternates" class="form-control"
+            placeholder="Hospital1, Hospital2, Hospital3..." />
+          <small class="text-muted">Comma-separated list (optional but recommended)</small>
+        </div>
+
+        <div class="alert alert-warning mb-3">
+          <strong>⚠️ Note:</strong> The ambulance team will receive this rejection immediately with your reason and
+          alternate suggestions.
+        </div>
+
+        <div class="flex justify-end gap-sm mt-4">
+          <button onclick="submitRejection()" class="btn btn-danger">Confirm Rejection</button>
+          <button onclick="closeRejectionModal()" class="btn btn-outline">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentHospitalId = '';
+    let currentUser = null;
+    let allEmergencies = [];
+
+    // --- Toast Notification System ---
+    function closeToast(id) {
+      const el = document.getElementById(id);
+      if (el) el.remove();
+    }
+
+    // --- Initialization ---
+    document.addEventListener('DOMContentLoaded', function () {
+      const role = localStorage.getItem('role');
+      const hospitalId = localStorage.getItem('hospitalId');
+      const token = getToken();
+
+      if (role === 'hospital' && hospitalId && token) {
+        loginSuccess(hospitalId, { hospitalId });
+      } else {
+        document.getElementById('login-section').style.display = 'flex';
+      }
+    });
+
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('open');
+    }
+
+    function logout() {
+      localStorage.clear();
+      window.location.reload();
+    }
+
+    async function loginHospital() {
+      try {
+        const hospitalId = document.getElementById('login-hospitalId').value.trim();
+        const password = document.getElementById('login-password').value;
+        if (!hospitalId || !password) {
+          notify('Please enter ID and Password', 'warning');
+          return;
+        }
+
+        const res = await login('hospital', hospitalId, password);
+        loginSuccess(hospitalId, res);
+      } catch (e) {
+        const msg = document.getElementById('login-msg');
+        msg.innerText = 'Login failed: ' + e.message;
+        msg.style.display = 'block';
+      }
+    }
+
+    function loginSuccess(hospitalId, user) {
+      currentHospitalId = hospitalId;
+      currentUser = user;
+
+      document.getElementById('login-section').style.display = 'none';
+      document.getElementById('dashboard-layout').style.display = 'flex';
+
+      joinHospitalRoom(currentHospitalId);
+      setupSocketListeners();
+
+      // Load initial data
+      loadDashboardStats();
+      showSection('dashboard');
+    }
+
+    // --- Real-Time Socket Listeners ---
+    function setupSocketListeners() {
+      if (!window.socket) {
+        console.error('Socket not available');
+        return;
+      }
+
+      // Bed Status Updates
+      window.socket.on('bed:update', (bed) => {
+        console.log('Bed updated:', bed);
+        notify(`Bed ${bed.bedNumber} is now ${bed.status}`, 'info');
+
+        // Reload beds if on beds page
+        const bedsSection = document.getElementById('section-beds');
+        if (bedsSection && bedsSection.style.display !== 'none') {
+          loadBeds();
+        }
+
+        // Update dashboard stats
+        loadDashboardStats();
+      });
+
+      // Emergency Updates
+      window.socket.on('emergency:new:public', (emergency) => {
+        console.log('New public emergency:', emergency);
+        notify(`New public emergency request from ${emergency.patient?.name}`, 'warning');
+        loadEmergencies();
+        loadDashboardStats();
+      });
+
+      window.socket.on('emergency:new:ambulance', (emergency) => {
+        console.log('New ambulance emergency:', emergency);
+        notify(`Emergency request from ambulance ${emergency.ambulanceId}`, 'warning');
+        loadEmergencies();
+        loadDashboardStats();
+      });
+
+      window.socket.on('emergency:update', (emergency) => {
+        console.log('Emergency updated:', emergency);
+        loadEmergencies();
+        loadDashboardStats();
+      });
+
+      // Doctor Availability Updates
+      window.socket.on('doctor:attendance', (payload) => {
+        const { doctorId, availability, proximityStatus, totalHours } = payload;
+        loadDoctors(); // Simplest way to refresh the whole list and keep state consistent
+        notify(`Doctor ${doctorId} status: ${availability} (${proximityStatus || 'N/A'})`, 'info');
+
+        const doctorsSection = document.getElementById('section-doctors');
+        if (doctorsSection && doctorsSection.style.display !== 'none') {
+          loadDoctors();
+        }
+        loadDashboardStats();
+      });
+
+      // Ambulance Status Updates
+      window.socket.on('ambulance:statusUpdate', (data) => {
+        console.log('Ambulance status updated:', data);
+        notify(`Ambulance Status: ${data.ambulanceId} is now ${data.status}`, 'info');
+
+        const ambulancesSection = document.getElementById('section-ambulances');
+        if (ambulancesSection && ambulancesSection.style.display !== 'none') {
+          loadAmbulances();
+        }
+        loadDashboardStats();
+      });
+
+      console.log('✓ Socket listeners initialized');
+    }
+
+    function showSection(name) {
+      document.querySelectorAll('.portal-section').forEach(el => el.style.display = 'none');
+      const target = document.getElementById('section-' + name);
+      if (target) target.style.display = 'block';
+
+      document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+      // Highlight active nav item logic here if needed
+
+      if (name === 'dashboard') loadDashboardStats();
+      if (name === 'nurses') loadNurses();
+      if (name === 'emergency-status') loadHospitalInfo();
+      if (name === 'beds') loadBeds();
+      if (name === 'doctors') loadDoctors();
+      if (name === 'ambulances') loadAmbulances();
+      if (name === 'emergencies') loadEmergencies();
+      if (name === 'bloodbank') loadBloodBank();
+      if (name === 'announcements') loadAnnouncements();
+      if (name === 'call-logs') loadCallLogs();
+      if (name === 'dbms') loadDBMS();
+    }
+
+    // --- Dashboard Stats ---
+    async function loadDashboardStats() {
+      if (!currentHospitalId) return;
+      try {
+        const [beds, doctors, ambulances, emergencies] = await Promise.all([
+          api(`/api/beds/${currentHospitalId}`),
+          api(`/api/doctors/${currentHospitalId}`),
+          api(`/api/ambulances/${currentHospitalId}`),
+          api(`/api/emergency/${currentHospitalId}`)
+        ]);
+
+        const vacantBeds = beds.filter(b => b.status !== 'Occupied').length;
+        const activeDocs = doctors.filter(d => d.availability === 'Available').length;
+        const activeAmbs = ambulances.filter(a => a.status === 'On Duty').length;
+
+        document.getElementById('dash-beds').innerText = `${vacantBeds} / ${beds.length}`;
+        document.getElementById('dash-docs').innerText = `${activeDocs} / ${doctors.length}`;
+        document.getElementById('dash-ambs').innerText = `${activeAmbs} / ${ambulances.length}`;
+
+        // Recent emergencies table
+        const recent = emergencies.slice(0, 5);
+        const tbody = document.getElementById('dash-recent-emergencies');
+        if (recent.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No recent emergencies</td></tr>';
+        } else {
+          tbody.innerHTML = recent.map(e => `
+            <tr>
+              <td>${e.patient?.name || 'Unknown'}</td>
+              <td><span class="badge" style="padding: 0.25rem 0.45rem; background: ${e.submittedBy === 'ambulance' ? '#dc3545' : '#0dcaf0'}; color: white; font-size: 0.7rem;">${e.submittedBy === 'ambulance' ? '🚑' : '👤'}</span></td>
+              <td>${e.patient?.emergencyType || 'General'}</td>
+              <td><span class="badge" style="background: ${getStatusBg(e.status)}; color: ${getStatusColor(e.status)}">${e.status}</span></td>
+              <td>${new Date(e.createdAt).toLocaleTimeString()}</td>
+            </tr>
+          `).join('');
+        }
+      } catch (e) { console.error(e); }
+    }
+
+    function getStatusColor(status) {
+      if (status === 'Pending') return '#856404';
+      if (status === 'Accepted') return '#0f5132';
+      if (status === 'Rejected' || status === 'Denied') return '#842029';
+      return '#41464b';
+    }
+
+    function getStatusBg(status) {
+      if (status === 'Pending') return '#fff3cd';
+      if (status === 'Accepted') return '#d1e7dd';
+      if (status === 'Rejected' || status === 'Denied') return '#f8d7da';
+      return '#e2e3e5';
+    }
+
+    // --- Hospital Info ---
+    async function loadHospitalInfo() {
+      const h = await api(`/api/hospital/${currentHospitalId}`);
+      // Populate fields
+      ['id', 'name', 'contact', 'state', 'district', 'city', 'street'].forEach(f => {
+        const el = document.getElementById(`h-${f}`);
+        if (el) el.value = (f === 'id' ? h.hospitalId : f === 'street' ? h.address?.street : h.address?.[f] || h[f] || '');
+      });
+
+      // Load Google Maps URL
+      const googleMapEl = document.getElementById('h-googleMapUrl');
+      if (googleMapEl) {
+        googleMapEl.value = h.googleMapUrl || '';
+      }
+      // Arrays
+      ['services', 'tests', 'insurance', 'procedures', 'facilities', 'management', 'highlights', 'treatment', 'surgery', 'therapy'].forEach(f => {
+        const el = document.getElementById(`h-${f}`);
+        if (el) el.value = (h[f] || []).join(', ');
+      });
+
+      // QR check
+      if (h.attendanceQR?.presentQR) {
+        document.getElementById('present-qr-img').src = h.attendanceQR.presentQR;
+        document.getElementById('absent-qr-img').src = h.attendanceQR.absentQR;
+        document.getElementById('qr-display').style.display = 'block';
+        document.getElementById('gen-qr-btn').style.display = 'none';
+        document.getElementById('print-qr-btn').style.display = 'inline-block';
+      }
+
+      // Load gallery
+      loadGallery();
+    }
+
+    async function saveHospital() {
+      const googleMapUrl = document.getElementById('h-googleMapUrl').value.trim();
+
+      // Validate Google Maps URL if provided
+      if (googleMapUrl && !isValidGoogleMapsUrl(googleMapUrl)) {
+        notify('Invalid Google Maps URL. Please enter a valid Google Maps link.', 'error');
+        return;
+      }
+
+      const body = {
+        name: document.getElementById('h-name').value,
+        contact: document.getElementById('h-contact').value,
+        address: {
+          state: document.getElementById('h-state').value,
+          district: document.getElementById('h-district').value,
+          city: document.getElementById('h-city').value,
+          street: document.getElementById('h-street').value
+        },
+        services: document.getElementById('h-services').value.split(',').map(s => s.trim()).filter(Boolean),
+        googleMapUrl: googleMapUrl || undefined
+      };
+
+      try {
+        await api(`/api/hospital/${currentHospitalId}`, { method: 'PUT', body: JSON.stringify(body) });
+        notify('Hospital information saved successfully', 'success');
+      } catch (e) {
+        notify('Error saving hospital info: ' + e.message, 'error');
+      }
+    }
+
+    // Validate Google Maps URL
+    function isValidGoogleMapsUrl(url) {
+      if (!url) return false;
+      const patterns = [
+        /^https?:\/\/(www\.)?(maps\.)?google\.(com|co\.\w+)\/.+/i,
+        /^https?:\/\/goo\.gl\/maps\/.+/i,
+        /^https?:\/\/maps\.app\.goo\.gl\/.+/i
+      ];
+      return patterns.some(pattern => pattern.test(url));
+    }
+
+    // --- Beds ---
+    async function loadBeds() {
+      try {
+        const beds = await api(`/api/beds/${currentHospitalId}`);
+        const tbody = document.getElementById('beds');
+        tbody.innerHTML = beds.map(b => `
+          <tr>
+            <td>${b.bedType}</td>
+            <td>${b.wardNumber}</td>
+            <td>${b.bedNumber}</td>
+            <td>
+              <span class="badge badge-${b.status === 'Occupied' ? 'danger' : b.status === 'Vacant' ? 'success' : b.status === 'Maintenance' ? 'warning' : 'info'}">
+                ${b.status}
+              </span>
+            </td>
+            <td>
+              <button onclick="toggleBed('${b.bedId}', '${b.status}')" class="btn btn-sm btn-outline">
+                ${b.status === 'Occupied' ? '🤝 Discharge' : '🛌 Occupy'}
+              </button>
+              <a href="/api/beds/pdf/${b.bedId}" target="_blank" class="btn btn-sm btn-outline">QR</a>
+            </td>
+          </tr>
+        `).join('');
+
+        // Summary
+        const total = beds.length;
+        const vacant = beds.filter(b => b.status === 'Vacant').length;
+        const occupied = beds.filter(b => b.status === 'Occupied').length;
+        const maintenance = total - vacant - occupied;
+
+        document.getElementById('bed-summary').innerText = `Total: ${total} | Vacant: ${vacant} | Occupied: ${occupied}${maintenance > 0 ? ` | Other: ${maintenance}` : ''}`;
+      } catch (e) {
+        document.getElementById('beds').innerHTML = `<tr><td colspan="5" class="text-danger">Error loading beds: ${e.message}</td></tr>`;
+      }
+    }
+
+    async function createBeds() {
+      const body = {
+        hospitalId: currentHospitalId,
+        wardNumber: document.getElementById('ward').value,
+        bedType: document.getElementById('bedType').value,
+        start: parseInt(document.getElementById('start').value),
+        end: parseInt(document.getElementById('end').value)
+      };
+      try {
+        await api('/api/beds', { method: 'POST', body: JSON.stringify(body) });
+        loadBeds();
+        document.getElementById('beds-status').innerText = 'Beds created!';
+      } catch (e) { notify('Error: ' + e.message, 'error'); }
+    }
+
+    async function toggleBed(id, status) {
+      try {
+        const newStatus = status === 'Occupied' ? 'Vacant' : 'Occupied';
+        await api(`/api/beds/${id}`, { method: 'PUT', body: JSON.stringify({ status: newStatus }) });
+        notify(`Bed is now ${newStatus}`, 'success');
+        // UI will update automatically via socket listener
+      } catch (e) {
+        notify(e.message, 'error');
+      }
+    }
+
+    function searchBeds() {
+      const q = document.getElementById('bed-search').value.toLowerCase();
+      const rows = document.querySelectorAll('#beds tr');
+      rows.forEach(r => {
+        const text = r.innerText.toLowerCase();
+        r.style.display = text.includes(q) ? '' : 'none';
+      });
+    }
+
+    function printMassQR() {
+      window.open(`/api/beds/pdf/mass/${currentHospitalId}`, '_blank');
+    }
+
+    // --- Bed QR Scanner ---
+    let html5QrcodeScanner = null;
+
+    function startBedScanner() {
+      document.getElementById('scanner-modal').style.display = 'flex';
+      document.getElementById('scanner-start-btn').style.display = 'none';
+      document.getElementById('scanner-stop-btn').style.display = 'inline-block';
+
+      // Initialize scanner if not already done
+      if (!html5QrcodeScanner) {
+        html5QrcodeScanner = new Html5QrcodeScanner(
+          "reader",
+          { fps: 10, qrbox: { width: 250, height: 250 } },
+          /* verbose= */ false
+        );
+        html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+      }
+    }
+
+    async function onScanSuccess(decodedText, decodedResult) {
+      // Handle the scanned code as you like, for example:
+      console.log(`Code matched = ${decodedText}`, decodedResult);
+
+      // Check if it's a valid bed URL
+      if (decodedText && decodedText.includes('/api/beds/scan/')) {
+        try {
+          // Stop scanning
+          stopScanner();
+
+          notify('Processing... Updating bed status...', 'info');
+
+          // The URL contains the update logic (e.g. ?set=Vacant)
+          // We need to fetch it to trigger the update
+          const res = await fetch(decodedText);
+
+          if (res.ok) {
+            notify('Bed status updated successfully', 'success');
+            loadBeds(); // Refresh the list
+          } else {
+            const errorText = await res.text().catch(() => 'Failed to update bed status');
+            notify('Failed to update bed status: ' + errorText, 'error');
+          }
+        } catch (e) {
+          console.error(e);
+          notify('Invalid QR code or network error: ' + e.message, 'error');
+        }
+      } else {
+        notify("Invalid Bed QR Code. Please scan a valid bed QR code.", 'error');
+      }
+    }
+
+    function onScanFailure(error) {
+      // handle scan failure, usually better to ignore and keep scanning.
+      // console.warn(`Code scan error = ${error}`);
+    }
+
+    function stopScanner() {
+      if (html5QrcodeScanner) {
+        try {
+          html5QrcodeScanner.clear();
+        } catch (e) {
+          console.warn('Error clearing scanner:', e);
+        }
+        html5QrcodeScanner = null;
+      }
+      document.getElementById('scanner-modal').style.display = 'none';
+      document.getElementById('scanner-start-btn').style.display = 'inline-block';
+      document.getElementById('scanner-stop-btn').style.display = 'none';
+      if (html5QrcodeScanner) {
+        html5QrcodeScanner.clear().catch(error => {
+          console.error("Failed to clear html5QrcodeScanner. ", error);
+        });
+        html5QrcodeScanner = null; // Reset to allow re-initialization
+      }
+    }
+
+    // --- Print Options Modal ---
+    function openPrintModal() {
+      populatePrintOptions();
+      document.getElementById('print-modal').style.display = 'flex';
+    }
+
+    function closePrintModal() {
+      document.getElementById('print-modal').style.display = 'none';
+    }
+
+    async function populatePrintOptions() {
+      try {
+        const beds = await api(`/api/beds/${currentHospitalId}`);
+        const wards = [...new Set(beds.map(b => b.wardNumber))].sort();
+        const wardSelect = document.getElementById('print-ward');
+        wardSelect.innerHTML = '<option value="all">All Wards</option>' +
+          wards.map(w => `<option value="${w}">${w}</option>`).join('');
+
+        const types = [...new Set(beds.map(b => b.bedType))].sort();
+        const typeSelect = document.getElementById('print-type');
+        typeSelect.innerHTML = '<option value="all">All Types</option>' +
+          types.map(t => `<option value="${t}">${t}</option>`).join('');
+      } catch (e) { console.error(e); }
+    }
+
+    function submitPrint(mode = 'pdf') {
+      const ward = document.getElementById('print-ward').value;
+      const type = document.getElementById('print-type').value;
+      const endpoint = mode === 'html' ? 'print-sheet' : 'pdf/mass';
+      window.open(`/api/beds/${endpoint}/${currentHospitalId}?wardNumber=${ward === 'all' ? '' : ward}&bedType=${type === 'all' ? '' : type}`, '_blank');
+      closePrintModal();
+    }
+
+    // --- Doctors ---
+    async function loadDoctors() {
+      try {
+        const docs = await api(`/api/doctors/${currentHospitalId}`);
+        const container = document.getElementById('doctors-list');
+        container.className = 'table-container mt-3';
+
+        container.innerHTML = `
+          <table class="table">
+            <thead>
+              <tr>
+                <th style="width: 60px;"></th>
+                <th>Name / ID</th>
+                <th>Speciality</th>
+                <th>Proximity</th>
+                <th>Status / Hours</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${docs.map(d => `
+                <tr id="doc-row-${d.doctorId}">
+                  <td>
+                    <div style="width:40px;height:40px;background:#eee;border-radius:50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; overflow: hidden;">
+                      ${d.photoUrl ? `
+                        <img src="${d.photoUrl.startsWith('http') ? d.photoUrl : d.photoUrl}" 
+                             alt="${d.name}" 
+                             style="width:100%;height:100%;object-fit:cover;"
+                             onerror="this.onerror=null; this.style.display='none'; this.parentElement.innerHTML='👨‍⚕️';">
+                      ` : '👨‍⚕️'}
+                    </div>
+                  </td>
+                  <td>
+                    <div class="font-bold">${d.name || 'N/A'}</div>
+                    <div class="text-muted text-xs">${d.doctorId || ''}</div>
+                  </td>
+                  <td>
+                    <span class="badge badge-${d.proximityStatus === 'Within 100m' ? 'success' : 'secondary'}">
+                      ${d.proximityStatus === 'Within 100m' ? '📍 Within 100m' : '🗺️ Out of Range'}
+                    </span>
+                  </td>
+                  <td>
+                    <span class="badge badge-${d.availability === 'Available' ? 'success' : 'secondary'}">
+                      ${d.availability || 'Unknown'}
+                    </span>
+                    <div class="text-xs font-bold mt-1 text-primary">⏱️ Today: ${d.todayHours || 0}h</div>
+                  </td>
+                  <td>
+                    <button class="btn btn-sm btn-outline" onclick="openAttendanceModal('${d.doctorId}', '${d.name}')">
+                      ✏️ Edit Attendance
+                    </button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } catch (e) {
+        document.getElementById('doctors-list').innerHTML = `<div class="alert alert-danger">Error loading doctors: ${e.message}</div>`;
+      }
+    }
+
+    async function createDoctor() {
+      const formData = new FormData();
+      formData.append('hospitalId', currentHospitalId);
+      formData.append('doctorId', document.getElementById('doc-id').value);
+      formData.append('name', document.getElementById('doc-name').value);
+      formData.append('speciality', document.getElementById('doc-spec').value);
+      formData.append('qualification', document.getElementById('doc-qual').value);
+      formData.append('experience', document.getElementById('doc-exp').value);
+
+      const photoInput = document.getElementById('doc-photo');
+      if (photoInput.files.length > 0) {
+        formData.append('photo', photoInput.files[0]);
+      }
+
+      try {
+        const token = getToken(); // Use getToken() from client.js which gets 'jwt'
+        const res = await fetch('/api/doctors', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` },
+          body: formData
+        });
+
+        if (!res.ok) {
+          // Handle token errors
+          if (res.status === 401) {
+            notify('Session expired. Please login again.', 'error');
+            setTimeout(() => window.location.href = '/', 2000);
+            return;
+          }
+          if (res.status === 403) {
+            notify('Forbidden: You do not have access to this action', 'error');
+            return;
+          }
+          const err = await res.json().catch(() => ({ message: 'Failed to register doctor' }));
+          throw new Error(err.message || 'Failed to register doctor');
+        }
+
+        loadDoctors();
+        notify('Doctor registered successfully', 'success');
+        // Clear inputs
+        ['doc-id', 'doc-name', 'doc-spec', 'doc-qual', 'doc-exp', 'doc-photo'].forEach(id => {
+          document.getElementById(id).value = '';
+        });
+      } catch (e) { notify('Error: ' + e.message, 'error'); }
+    }
+
+    async function generateHospitalQR() {
+      try {
+        const res = await api(`/api/hospital/${currentHospitalId}/attendance-qr`, { method: 'POST' });
+        loadHospitalInfo();
+      } catch (e) { notify('Error: ' + e.message, 'error'); }
+    }
+
+    function printHospitalQR() {
+      if (!currentHospitalId) return;
+      window.open(`/api/hospital/${currentHospitalId}/attendance-qr-pdf`, '_blank');
+    }
+
+    // --- Blood Bank ---
+    async function loadBloodBank() {
+      try {
+        const list = await api(`/api/hospital/${currentHospitalId}/bloodbank`);
+        document.getElementById('blood-list').innerHTML = list.map(item => `
+          <tr>
+            <td><span class="badge" style="background: #dc3545; color: white;">${item.bloodGroup}</span></td>
+            <td><strong>${item.units}</strong> Units</td>
+            <td>${new Date(item.lastUpdated).toLocaleDateString()}</td>
+            <td>
+              <button onclick="editBlood('${item.bloodGroup}', ${item.units})" class="btn btn-sm btn-outline">Edit</button>
+            </td>
+          </tr>
+        `).join('') || '<tr><td colspan="4" class="text-center text-muted py-4">No blood inventory data</td></tr>';
+      } catch (e) {
+        notify('Failed to load blood bank', 'error');
+      }
+    }
+
+    function openBloodModal() {
+      document.getElementById('blood-modal-title').innerText = '🩸 Add Blood Stock';
+      document.getElementById('blood-group-select').disabled = false;
+      document.getElementById('blood-group-select').value = 'A+';
+      document.getElementById('blood-units-input').value = '';
+      document.getElementById('blood-bank-modal').style.display = 'flex';
+    }
+
+    function closeBloodModal() {
+      document.getElementById('blood-bank-modal').style.display = 'none';
+    }
+
+    function editBlood(group, currentUnits) {
+      document.getElementById('blood-modal-title').innerText = `✏️ Edit ${group} Stock`;
+      document.getElementById('blood-group-select').value = group;
+      document.getElementById('blood-group-select').disabled = true;
+      document.getElementById('blood-units-input').value = currentUnits;
+      document.getElementById('blood-bank-modal').style.display = 'flex';
+    }
+
+    async function saveBloodStock() {
+      const bloodGroup = document.getElementById('blood-group-select').value;
+      const units = parseInt(document.getElementById('blood-units-input').value);
+
+      if (isNaN(units) || units < 0) {
+        notify('Please enter a valid number of units', 'warning');
+        return;
+      }
+
+      try {
+        await api(`/api/hospital/${currentHospitalId}/bloodbank`, {
+          method: 'POST',
+          body: JSON.stringify({ bloodGroup, units })
+        });
+        closeBloodModal();
+        loadBloodBank();
+        notify('Blood stock updated', 'success');
+      } catch (e) {
+        notify(e.message, 'error');
+      }
+    }
+
+    // --- Announcements ---
+    async function loadAnnouncements() {
+      try {
+        const list = await api(`/api/hospital/${currentHospitalId}/announcements`);
+        document.getElementById('announcement-list').innerHTML = list.map(a => `
+          <div class="card mb-2 p-3 border-left-${a.severity === 'Critical' ? 'danger' : a.severity === 'Warning' ? 'warning' : 'info'}">
+            <div class="flex justify-between">
+               <strong>${a.message}</strong>
+               <button onclick="deleteAnnouncement('${a._id}')" class="text-danger border-0 bg-transparent">🗑️</button>
+            </div>
+            <small class="text-muted">Expires: ${new Date(a.expiresAt).toLocaleString()}</small>
+          </div>
+        `).join('');
+      } catch (e) { console.error(e); }
+    }
+
+    async function postAnnouncement() {
+      const message = document.getElementById('ann-msg').value;
+      const severity = document.getElementById('ann-severity').value;
+      const durationHours = document.getElementById('ann-duration').value;
+
+      if (!message) return notify("Message required", "warning");
+
+      try {
+        await api(`/api/hospital/${currentHospitalId}/announcements`, {
+          method: 'POST',
+          body: JSON.stringify({ message, severity, durationHours })
+        });
+        document.getElementById('ann-msg').value = '';
+        loadAnnouncements();
+        notify('Announcement posted', 'success');
+      } catch (e) { notify(e.message, 'error'); }
+    }
+
+    async function deleteAnnouncement(id) {
+      if (!confirm("Delete this announcement?")) return;
+      try {
+        await api(`/api/hospital/${currentHospitalId}/announcements/${id}`, { method: 'DELETE' });
+        loadAnnouncements();
+      } catch (e) { notify(e.message, 'error'); }
+    }
+
+    // --- Call Logs ---
+    async function loadCallLogs() {
+      const loader = document.getElementById('call-logs-loader');
+      const list = document.getElementById('call-logs-list');
+      loader.style.display = 'block';
+      list.innerHTML = '';
+
+      try {
+        const logs = await api(`/api/hospital/call-logs/${currentHospitalId}`);
+        loader.style.display = 'none';
+
+        list.innerHTML = logs.map(l => `
+          <tr class="status-${l.status.toLowerCase()}">
+            <td>
+              <div class="font-bold">${l.callerName || 'Unknown'}</div>
+              <div class="text-xs text-muted">${l.callerMobile || ''}</div>
+              <div class="text-xs text-muted mt-1">${new Date(l.calledAt).toLocaleString([], { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' })}</div>
+            </td>
+            <td>${l.reason || '-'}</td>
+            <td><span class="badge badge-${l.status === 'Accepted' ? 'success' : l.status === 'Rejected' ? 'danger' : 'secondary'}">${l.status}</span></td>
+            <td>
+              ${l.status === 'Pending' ? `
+                <button onclick="updateCallLog('${l._id}', 'Accepted')" class="btn btn-sm btn-success">Accept</button>
+                <button onclick="updateCallLog('${l._id}', 'Rejected')" class="btn btn-sm btn-outline text-danger">Reject</button>
+              ` : `<small class="text-muted italic">${l.remarks || 'No remarks'}</small>`}
+            </td>
+          </tr>
+        `).join('') || '<tr><td colspan="4" class="text-center p-3 text-muted">No call logs found</td></tr>';
+      } catch (e) {
+        loader.innerText = 'Error loading logs: ' + e.message;
+      }
+    }
+
+    async function updateCallLog(id, status) {
+      const remarks = prompt(`Enter remarks for ${status}:`, status === 'Accepted' ? 'Ambulance dispatched' : 'No ambulance available');
+      if (remarks === null) return;
+
+      try {
+        const res = await api(`/api/hospital/call-log/${id}`, {
+          method: 'PUT',
+          body: JSON.stringify({ status, remarks })
+        });
+        if (res.success) {
+          notify('Call status updated', 'success');
+          loadCallLogs();
+        }
+      } catch (e) {
+        notify('Update failed: ' + e.message, 'error');
+      }
+    }
+
+    // --- Gallery Upload Functions ---
+    function previewGalleryImages() {
+      const input = document.getElementById('gallery-upload');
+      const files = input.files;
+
+      if (files.length === 0) {
+        document.getElementById('gallery-preview').style.display = 'none';
+        return;
+      }
+
+      if (files.length > 10) {
+        notify('Maximum 10 images allowed', 'warning');
+        input.value = '';
+        return;
+      }
+
+      const previewGrid = document.getElementById('preview-grid');
+      previewGrid.innerHTML = '';
+      document.getElementById('gallery-preview').style.display = 'block';
+
+      Array.from(files).forEach((file, idx) => {
+        if (file.size > 5 * 1024 * 1024) {
+          notify(`${file.name} exceeds 5MB limit. Please select a smaller file.`, 'error');
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const div = document.createElement('div');
+          div.style.position = 'relative';
+          div.innerHTML = `
+            <img src="${e.target.result}" 
+                 style="width: 120px; height: 80px; object-fit: cover; border-radius: 8px; border: 2px solid #dee2e6;" 
+                 alt="Preview ${idx + 1}" />
+          `;
+          previewGrid.appendChild(div);
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function uploadGallery() {
+      const input = document.getElementById('gallery-upload');
+      const files = input.files;
+
+      if (files.length === 0) {
+        alert('Please select images to upload');
+        return;
+      }
+
+      const formData = new FormData();
+      Array.from(files).forEach(file => {
+        formData.append('gallery', file);
+      });
+
+      const btn = document.getElementById('upload-gallery-btn');
+      btn.disabled = true;
+      btn.innerText = '⏳ Uploading...';
+
+      try {
+        const token = getToken(); // Use getToken() from client.js which gets 'jwt'
+        if (!token) {
+          notify('Authentication required. Please login again.', 'error');
+          setTimeout(() => window.location.href = '/', 2000);
+          return;
+        }
+
+        const res = await fetch(`/api/hospital/${currentHospitalId}/gallery`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` },
+          body: formData
+        });
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          let errorMsg = 'Upload failed';
+          try {
+            const errorData = JSON.parse(errorText);
+            errorMsg = errorData.message || errorData.error || errorMsg;
+          } catch {
+            errorMsg = errorText || errorMsg;
+          }
+
+          // Handle token errors
+          if (res.status === 401) {
+            notify('Session expired. Please login again.', 'error');
+            setTimeout(() => window.location.href = '/', 2000);
+            return;
+          }
+
+          throw new Error(errorMsg);
+        }
+
+        const data = await res.json();
+        notify('Images uploaded successfully!', 'success');
+        input.value = '';
+        document.getElementById('gallery-preview').style.display = 'none';
+        loadGallery();
+      } catch (e) {
+        notify('Upload failed: ' + e.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerText = '📤 Upload Photos';
+      }
+    }
+
+    async function loadGallery() {
+      try {
+        const h = await api(`/api/hospital/${currentHospitalId}`);
+        const container = document.getElementById('current-gallery');
+
+        if (!h.gallery || h.gallery.length === 0) {
+          container.innerHTML = '<small class="text-muted">No photos uploaded yet</small>';
+          return;
+        }
+
+        container.innerHTML = h.gallery.map((filename, idx) => `
+          <div style="position: relative; display: inline-block;">
+            <img src="/uploads/hospital-gallery/${currentHospitalId}/${filename}" 
+                 style="width: 150px; height: 100px; object-fit: cover; border-radius: 8px; border: 1px solid #dee2e6;" 
+                 alt="Hospital Photo ${idx + 1}"
+                 onerror="this.onerror=null; this.src='/images/hospital.png'; this.style.objectFit='contain'; this.style.padding='10px';" />
+            <button onclick="deleteGalleryImage('${filename}')" 
+                    style="position: absolute; top: 5px; right: 5px; background: rgba(220,53,69,0.9); color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; font-size: 0.8rem;"
+                    title="Delete">
+              ×
+            </button>
+          </div>
+        `).join('');
+      } catch (e) {
+        console.error('Gallery load error:', e);
+      }
+    }
+
+    async function deleteGalleryImage(filename) {
+      if (!confirm('Delete this photo?')) return;
+
+      try {
+        await api(`/api/hospital/${currentHospitalId}/gallery`, {
+          method: 'DELETE',
+          body: JSON.stringify({ items: [filename] })
+        });
+        loadGallery();
+      } catch (e) {
+        notify('Delete failed: ' + e.message, 'error');
+      }
+    }
+
+    // --- Attendance Edit Functions ---
+    function openAttendanceModal(doctorId, doctorName) {
+      document.getElementById('edit-doctor-id').value = doctorId;
+      document.getElementById('edit-doctor-name').value = doctorName;
+
+      // Set default date to today
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('edit-attendance-date').value = today;
+
+      // Default values
+      document.getElementById('edit-attendance-shift').value = 'Morning';
+      document.getElementById('edit-attendance-status').value = 'Present';
+
+      document.getElementById('attendance-modal').style.display = 'flex';
+    }
+
+    function closeAttendanceModal() {
+      document.getElementById('attendance-modal').style.display = 'none';
+    }
+
+    async function saveAttendance() {
+      const doctorId = document.getElementById('edit-doctor-id').value;
+      const date = document.getElementById('edit-attendance-date').value;
+      const shift = document.getElementById('edit-attendance-shift').value;
+      const availability = document.getElementById('edit-attendance-status').value;
+
+      if (!doctorId || !date) {
+        alert('Please fill all fields');
+        return;
+      }
+
+      try {
+        const res = await api('/api/doctors/attendance/manual-update', {
+          method: 'PUT',
+          body: JSON.stringify({ doctorId, date, shift, availability })
+        });
+
+        if (res.success) {
+          alert(res.message || 'Attendance updated successfully');
+          closeAttendanceModal();
+          loadDoctors(); // Refresh doctor list
+        } else {
+          alert(res.message || 'Failed to update attendance');
+        }
+      } catch (e) {
+        alert('Error: ' + e.message);
+      }
+    }
+
+    // --- Ambulances ---
+    async function loadAmbulances() {
+      try {
+        const ambs = await api(`/api/ambulances/${currentHospitalId}`);
+        const container = document.getElementById('ambulances-cards');
+        container.className = 'table-container mt-3';
+
+        container.innerHTML = `
+          <table class="table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Vehicle No.</th>
+                <th>EMT Name</th>
+                <th>Pilot Name</th>
+                <th>Status</th>
+                <th>Location</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${ambs.map(a => `
+                <tr>
+                  <td>${a.ambulanceId || 'N/A'}</td>
+                  <td>${a.vehicleNumber || 'N/A'}</td>
+                  <td>${(a.emt && a.emt.name) || 'N/A'}<br><small class="text-muted">${(a.emt && a.emt.mobile) || ''}</small></td>
+                  <td>${(a.pilot && a.pilot.name) || 'N/A'}<br><small class="text-muted">${(a.pilot && a.pilot.mobile) || ''}</small></td>
+                  <td><span class="badge badge-${a.status === 'On Duty' ? 'success' : 'secondary'}">${a.status || 'Offline'}</span></td>
+                  <td>${a.location ? `${a.location.lat.toFixed(4)}, ${a.location.lng.toFixed(4)}` : 'N/A'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } catch (e) {
+        document.getElementById('ambulances-cards').innerHTML = `<div class="alert alert-danger">Error loading ambulances: ${e.message}</div>`;
+      }
+    }
+
+    // --- Nurses ---
+    async function loadNurses() {
+      try {
+        const nurses = await api(`/api/nurse/${currentHospitalId}`);
+        const container = document.getElementById('nurses-list');
+        container.className = 'table-container';
+
+        if (!nurses || nurses.length === 0) {
+          container.innerHTML = '<div class="text-center p-4 text-muted">No nurses registered.</div>';
+          return;
+        }
+
+        container.innerHTML = `
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Nurse ID</th>
+                <th>Name</th>
+                <th>Mobile</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${nurses.map(n => `
+                <tr>
+                  <td class="font-bold">${n.nurseId}</td>
+                  <td>${n.name}</td>
+                  <td>${n.mobile}</td>
+                  <td>
+                    <button class="btn btn-xs btn-outline text-danger" onclick="deleteNurse('${n.nurseId}')">Delete</button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } catch (e) {
+        document.getElementById('nurses-list').innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
+      }
+    }
+
+    async function createNurse() {
+      const nurseId = document.getElementById('nurse-id').value.trim();
+      const name = document.getElementById('nurse-name').value.trim();
+      const mobile = document.getElementById('nurse-mobile').value.trim();
+
+      if (!nurseId || !name || !mobile) {
+        notify('Please fill all fields', 'warning');
+        return;
+      }
+
+      try {
+        const res = await api('/api/nurse', {
+          method: 'POST',
+          body: JSON.stringify({ nurseId, name, mobile, hospitalId: currentHospitalId, password: 'password' })
+        });
+        notify('Nurse registered successfully', 'success');
+        loadNurses();
+        document.getElementById('nurse-id').value = '';
+        document.getElementById('nurse-name').value = '';
+        document.getElementById('nurse-mobile').value = '';
+      } catch (e) { notify(e.message, 'error'); }
+    }
+
+    async function deleteNurse(nurseId) {
+      if (!confirm('Are you sure you want to delete this nurse?')) return;
+      try {
+        await api(`/api/nurse/${nurseId}`, { method: 'DELETE' });
+        notify('Nurse deleted', 'success');
+        loadNurses();
+      } catch (e) { notify(e.message, 'error'); }
+    }
+
+    async function createAmbulance() {
+      const vehNum = document.getElementById('veh-num').value;
+      const body = {
+        hospitalId: currentHospitalId,
+        ambulanceId: document.getElementById('amb-id').value,
+        ambulanceNumber: vehNum, // Required by backend
+        vehicleNumber: vehNum,
+        emt: {
+          name: document.getElementById('amb-emt-name').value,
+          mobile: document.getElementById('amb-emt-mobile').value,
+          emtId: 'EMT-' + Math.floor(Math.random() * 10000)
+        },
+        pilot: {
+          name: document.getElementById('amb-pilot-name').value,
+          mobile: document.getElementById('amb-pilot-mobile').value,
+          pilotId: 'PIL-' + Math.floor(Math.random() * 10000)
+        },
+        password: 'password'
+      };
+      try {
+        const token = getToken(); // Use getToken() from client.js which gets 'jwt'
+        if (!token) {
+          notify('Authentication required. Please login again.', 'error');
+          setTimeout(() => window.location.href = '/', 2000);
+          return;
+        }
+        const res = await fetch('/api/ambulances', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify(body)
+        });
+
+        if (!res.ok) {
+          // Handle token errors
+          if (res.status === 401) {
+            notify('Session expired. Please login again.', 'error');
+            setTimeout(() => window.location.href = '/', 2000);
+            return;
+          }
+          if (res.status === 403) {
+            notify('Forbidden: You do not have access to this action', 'error');
+            return;
+          }
+          const err = await res.json().catch(() => ({ message: 'Failed to register ambulance' }));
+          throw new Error(err.message || 'Failed to register ambulance');
+        }
+
+        loadAmbulances();
+        notify('Ambulance registered successfully', 'success');
+        // Clear inputs
+        ['amb-id', 'veh-num', 'amb-emt-name', 'amb-emt-mobile', 'amb-pilot-name', 'amb-pilot-mobile'].forEach(id => {
+          document.getElementById(id).value = '';
+        });
+      } catch (e) { notify('Error: ' + e.message, 'error'); }
+    }
+
+    async function setReadyToServe(id) {
+      try {
+        const res = await api(`/api/emergency/${id}/ready-to-serve`, { method: 'PUT' });
+        if (res.success) {
+          notify('Hospital marked as Ready to Serve!', 'success');
+          loadEmergencies();
+        }
+      } catch (e) {
+        notify('Failed to update status: ' + e.message, 'error');
+      }
+    }
+
+    // --- Emergencies ---
+    async function loadEmergencies() {
+      try {
+        allEmergencies = await api(`/api/emergency/${currentHospitalId}`);
+        filterEmergencies('all');
+        updateEmergencyStats();
+      } catch (e) {
+        document.getElementById('emergencies-cards').innerHTML = `<div class="alert alert-danger">Error loading emergencies: ${e.message}</div>`;
+      }
+    }
+
+    function filterEmergencies(status) {
+      document.querySelectorAll('#section-emergencies .btn-outline').forEach(b => b.classList.remove('active'));
+      document.getElementById(`filter-${status}`).classList.add('active');
+
+      const filtered = status === 'all' ? allEmergencies : allEmergencies.filter(e => e.status.toLowerCase() === status);
+
+      const container = document.getElementById('emergencies-cards');
+      container.className = 'table-container mt-3';
+
+      if (filtered.length === 0) {
+        container.innerHTML = '<div class="text-center p-4 text-muted">No emergency requests found.</div>';
+        return;
+      }
+
+      container.innerHTML = `
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Source</th>
+              <th>Time</th>
+              <th>Patient Details</th>
+              <th>Contact & Address</th>
+              <th>Type & Symptoms</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filtered.map(e => `
+              <tr>
+                <td>
+                  <span class="badge" style="padding: 0.35rem 0.55rem; border-radius: 4px; background: ${e.submittedBy === 'ambulance' ? '#dc3545' : '#0dcaf0'}; color: white; font-size: 0.75rem;">
+                    ${e.submittedBy === 'ambulance' ? '🚑 Ambulance' : '👤 Public'}
+                  </span>
+                </td>
+                <td style="white-space: nowrap;">
+                  <strong>${new Date(e.createdAt).toLocaleDateString()}</strong><br>
+                  <small>${new Date(e.createdAt).toLocaleTimeString()}</small>
+                </td>
+                <td>
+                  <strong>${e.patient?.name || 'N/A'}</strong><br>
+                  <small class="text-muted">
+                    Age: ${e.patient?.age || 'N/A'} | 
+                    Gender: ${e.patient?.gender || 'N/A'}
+                  </small>
+                </td>
+                <td>
+                  <strong>📞 ${e.patient?.contactMobile || 'N/A'}</strong><br>
+                  <small class="text-muted">
+                    📍 ${e.patient?.contactAddress || 'No address provided'}
+                  </small>
+                </td>
+                <td>
+                  ${e.prepInfo ? `
+                    <div class="prep-info-box card p-2 bg-light text-sm" style="border-left: 3px solid #0d6efd;">
+                      <div><strong>Vitals:</strong> ${e.prepInfo.vitals || 'N/A'}</div>
+                      <div><strong>Condition:</strong> ${e.prepInfo.patientCondition || 'N/A'}</div>
+                      <div><strong>ETA:</strong> ${e.prepInfo.eta || 'N/A'}</div>
+                    </div>
+                  ` : '<span class="text-muted italic">Waiting for prep info...</span>'}
+                </td>
+                <td>
+                  <span class="badge badge-${this.getStatusClass(e.status)}">${e.status}</span>
+                  ${e.status === 'Accepted' && !e.isReadyToServe ? `
+                    <button onclick="setReadyToServe('${e._id}')" class="btn btn-xs btn-primary mt-1">Ready to Serve</button>
+                  ` : e.isReadyToServe ? '<div class="text-xs text-success font-bold mt-1">✅ Ready to Serve</div>' : ''}
+                </td>
+                <td>
+                  ${e.status === 'Pending' ? `
+                    <button onclick="respondToEmergency('${e._id}', '${e.submittedBy}', 'Accepted')" class="btn btn-sm btn-success">✅ Accept</button>
+                    <button onclick="respondToEmergency('${e._id}', '${e.submittedBy}', 'Rejected')" class="btn btn-sm btn-outline text-danger">❌ Reject</button>
+                  ` : `
+                    <button onclick="openEmergencyDetail('${e._id}')" class="btn btn-sm btn-outline">Details</button>
+                  `}
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+
+    // Handle emergency responses differently based on source
+    async function respondToEmergency(id, submittedBy, status) {
+      if (submittedBy === 'ambulance') {
+        // Full-duplex: Can send detailed response back to ambulance
+        if (status === 'Accepted') {
+          try {
+            const remarks = prompt('Acceptance remarks (optional for ambulance):');
+            await api(`/api/emergency/${id}/accept`, {
+              method: 'PUT',
+              body: JSON.stringify({ remarks: remarks || 'Ready for admission procedure' })
+            });
+            notify('Emergency Accepted', 'success');
+            await loadEmergencies();
+          } catch (e) {
+            notify(e.message || 'Failed to accept request', 'error');
+          }
+        } else if (status === 'Rejected') {
+          // Open rejection modal for ambulance requests
+          openRejectionModal(id);
+        }
+      } else {
+        // One-directional: Just update status for public requests
+        try {
+          if (status === 'Accepted') {
+            await api(`/api/emergency/${id}/status`, {
+              method: 'PUT',
+              body: JSON.stringify({ status: 'Accepted', remarks: 'Request accepted' })
+            });
+            notify('Public emergency request has been accepted', 'success');
+          } else if (status === 'Rejected') {
+            const reason = prompt('Reason for rejection:');
+            if (!reason) {
+              notify('Reason is required for rejection', 'warning');
+              return;
+            }
+            await api(`/api/emergency/${id}/status`, {
+              method: 'PUT',
+              body: JSON.stringify({ status: 'Rejected', rejectionReason: reason })
+            });
+            notify('Public emergency request has been rejected', 'info');
+          }
+
+          // Reload emergencies without page refresh
+          await loadEmergencies();
+        } catch (e) {
+          notify(e.message || 'Failed to process request', 'error');
+        }
+      }
+    }
+
+    // Open rejection modal
+    function openRejectionModal(emergencyId) {
+      document.getElementById('rejection-emergency-id').value = emergencyId;
+      document.getElementById('rejection-reason').value = '';
+      document.getElementById('rejection-alternates').value = '';
+      document.getElementById('rejection-modal').style.display = 'flex';
+    }
+
+    // Close rejection modal
+    function closeRejectionModal() {
+      document.getElementById('rejection-modal').style.display = 'none';
+    }
+
+    // Submit rejection
+    async function submitRejection() {
+      const emergencyId = document.getElementById('rejection-emergency-id').value;
+      const reason = document.getElementById('rejection-reason').value.trim();
+      const alternates = document.getElementById('rejection-alternates').value.trim();
+
+      if (!reason) {
+        notify('Reason for rejection is required', 'warning');
+        return;
+      }
+
+      try {
+        await api(`/api/emergency/${emergencyId}/reject`, {
+          method: 'PUT',
+          body: JSON.stringify({
+            rejectionReason: reason,
+            alternateHospitals: alternates ? alternates.split(',').map(h => h.trim()).filter(Boolean) : []
+          })
+        });
+
+        closeRejectionModal();
+        notify(`Ambulance notified of rejection with reason${alternates ? ' and alternate hospitals' : ''}`, 'info');
+        await loadEmergencies();
+      } catch (e) {
+        notify(e.message || 'Failed to process rejection', 'error');
+      }
+    }
+
+    // Keep the old function for backward compatibility
+    async function updateEmergency(id, status) {
+      const reason = status === 'Rejected' ? prompt('Reason for rejection:') : '';
+      if (status === 'Rejected' && !reason) return;
+
+      try {
+        await api(`/api/emergency/${id}/status`, {
+          method: 'PUT',
+          body: JSON.stringify({ status, rejectionReason: reason })
+        });
+        loadEmergencies();
+      } catch (e) { notify('Error: ' + e.message, 'error'); }
+    }
+
+    function updateEmergencyStats() {
+      const counts = { Pending: 0, Accepted: 0, Rejected: 0, Denied: 0, Transferred: 0 };
+      allEmergencies.forEach(e => {
+        if (counts[e.status] !== undefined) counts[e.status]++;
+      });
+      document.getElementById('pending-count').innerText = counts.Pending;
+      document.getElementById('accepted-count').innerText = counts.Accepted;
+      document.getElementById('rejected-count').innerText = counts.Rejected + counts.Denied;
+      document.getElementById('transferred-count').innerText = counts.Transferred;
+    }
+
+    // --- DBMS ---
+    async function loadDBMS() {
+      try {
+        const [h, d, b, amb, emerg] = await Promise.all([
+          api(`/api/hospital/${currentHospitalId}`),
+          api(`/api/doctors/${currentHospitalId}`),
+          api(`/api/beds/${currentHospitalId}`),
+          api(`/api/ambulances/${currentHospitalId}`),
+          api(`/api/emergency/${currentHospitalId}`)
+        ]);
+
+        // Hospital Data Table
+        document.getElementById('hospital-data-view').innerHTML = generateHTMLTable([h], [
+          'hospitalId', 'name', 'contact', 'address', 'services', 'facilities',
+          'insurance', 'treatment', 'surgery', 'therapy'
+        ]);
+
+        // Doctors Data Table
+        document.getElementById('doctors-data-view').innerHTML = generateHTMLTable(d, [
+          'doctorId', 'name', 'qualification', 'speciality', 'experience',
+          'availability', 'shift'
+        ]);
+
+        // Beds Data Table
+        document.getElementById('beds-data-view').innerHTML = generateHTMLTable(b, [
+          'bedId', 'bedNumber', 'wardNumber', 'bedType', 'status', 'lastUpdated'
+        ]);
+
+        // Add Ambulances section if not exists
+        if (!document.getElementById('ambulances-data-view')) {
+          const ambSection = document.createElement('details');
+          ambSection.className = 'card border mt-2';
+          ambSection.style.padding = '0';
+          ambSection.innerHTML = `
+            <summary class="card-header cursor-pointer hover:bg-light font-weight-bold">🚑 Ambulances Data</summary>
+            <div id="ambulances-data-view" class="p-3 bg-light" style="overflow-x: auto;"></div>
+          `;
+          document.getElementById('beds-data-view').parentElement.parentElement.after(ambSection);
+        }
+        document.getElementById('ambulances-data-view').innerHTML = generateHTMLTable(amb, [
+          'ambulanceId', 'vehicleNumber', 'status', 'emt', 'pilot'
+        ]);
+
+        // Add Emergency Requests section if not exists
+        if (!document.getElementById('emergency-data-view')) {
+          const emergSection = document.createElement('details');
+          emergSection.className = 'card border mt-2';
+          emergSection.style.padding = '0';
+          emergSection.innerHTML = `
+            <summary class="card-header cursor-pointer hover:bg-light font-weight-bold">🚨 Emergency Requests Data</summary>
+            <div id="emergency-data-view" class="p-3 bg-light" style="overflow-x: auto;"></div>
+          `;
+          document.getElementById('ambulances-data-view').parentElement.parentElement.after(emergSection);
+        }
+        document.getElementById('emergency-data-view').innerHTML = generateHTMLTable(emerg, [
+          'patient', 'status', 'submittedBy', 'createdAt'
+        ]);
+      } catch (e) {
+        console.error('DBMS load error:', e);
+      }
+    }
+
+    function generateHTMLTable(data, columns) {
+      if (!data || data.length === 0) {
+        return '<p class="text-muted">No data available</p>';
+      }
+
+      let html = '<div style="overflow-x: auto; max-height: 400px;"><table class="table" style="background: white; border-radius: 8px;">';
+
+      // Header
+      html += '<thead style="position: sticky; top: 0; background: #f8f9fa; z-index: 1;"><tr>';
+      columns.forEach(col => {
+        html += `<th style="padding: 12px; border-bottom: 2px solid #dee2e6;">${col}</th>`;
+      });
+      html += '</tr></thead>';
+
+      // Body
+      html += '<tbody>';
+      data.forEach((row, idx) => {
+        const bgColor = idx % 2 === 0 ? '#ffffff' : '#f8f9fa';
+        html += `<tr style="background: ${bgColor};">`;
+        columns.forEach(col => {
+          let value = row[col];
+
+          // Format special fields
+          if (col === 'address' && typeof value === 'object') {
+            value = `${value.street || ''}, ${value.city || ''}, ${value.state || ''}`;
+          } else if (col === 'emt' || col === 'pilot') {
+            value = value ? `${value.name} (${value.mobile})` : 'N/A';
+          } else if (col === 'patient' && typeof value === 'object') {
+            value = `${value.name} (${value.age}/${value.gender})`;
+          } else if (Array.isArray(value)) {
+            value = value.join(', ');
+          } else if (col === 'createdAt' || col === 'lastUpdated') {
+            value = value ? new Date(value).toLocaleString() : 'N/A';
+          } else if (value === null || value === undefined) {
+            value = 'N/A';
+          } else if (typeof value === 'object') {
+            value = JSON.stringify(value);
+          }
+
+          html += `<td style="padding: 10px; border-bottom: 1px solid #dee2e6; max-width: 300px; overflow: hidden; text-overflow: ellipsis;">${value}</td>`;
+        });
+        html += '</tr>';
+      });
+      html += '</tbody></table></div>';
+
+      return html;
+    }
+
+
+  </script>
+</body>
+
+</html>

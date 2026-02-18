@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Nurse Portal - RapidCare</title>
+    <link rel="stylesheet" href="/css/styles.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <script defer src="/js/client.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" type="text/javascript"></script>
+</head>
+
+<style>
+    /* Same professional layout as other portals */
+    .dashboard-container {
+        display: flex;
+        min-height: 100vh;
+        background: var(--bg-body);
+    }
+
+    .sidebar {
+        width: 280px;
+        background: #fff;
+        border-right: 1px solid var(--border-color);
+        display: flex;
+        flex-direction: column;
+        position: fixed;
+        height: 100vh;
+        z-index: 100;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .sidebar-header {
+        padding: var(--spacing-lg);
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-sm);
+    }
+
+    .sidebar-nav {
+        padding: var(--spacing-md);
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-xs);
+    }
+
+    .nav-item {
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-sm);
+        padding: 0.75rem 1rem;
+        border-radius: var(--border-radius);
+        color: var(--text-muted);
+        font-weight: 500;
+        cursor: pointer;
+        transition: var(--transition-base);
+    }
+
+    .nav-item:hover {
+        background: rgba(11, 110, 253, 0.05);
+        color: var(--primary-color);
+    }
+
+    .nav-item.active {
+        background: rgba(11, 110, 253, 0.1);
+        color: var(--primary-color);
+        font-weight: 600;
+    }
+
+    .main-content {
+        flex: 1;
+        margin-left: 280px;
+        padding: var(--spacing-lg);
+    }
+
+    .bed-card {
+        background: white;
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+        padding: 1rem;
+        transition: all 0.2s ease;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 140px;
+    }
+
+    .bed-card:hover {
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-md);
+    }
+
+    .bed-status-btn {
+        width: 100%;
+        margin-top: 0.5rem;
+        padding: 0.4rem;
+        border-radius: 6px;
+        border: 1px solid var(--border-color);
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+</style>
+</head>
+
+<body>
+
+    <!-- Login Section -->
+    <div id="login-section" class="container"
+        style="display: flex; min-height: 100vh; align-items: center; justify-content: center;">
+        <div class="card glass shadow-lg"
+            style="width: 100%; max-width: 400px; border-top: 4px solid var(--info-color);">
+            <div class="card-header text-center border-0 pb-0">
+                <h2 class="text-info font-bold">Nurse Access</h2>
+                <p class="text-muted">Medical Bed Management Terminal</p>
+            </div>
+            <div class="p-4">
+                <div class="form-group"><label class="form-label uppercase text-xs font-bold text-muted">Staff
+                        ID</label><input id="nurse-login-id" class="form-control" placeholder="NUR001" /></div>
+                <div class="form-group"><label class="form-label uppercase text-xs font-bold text-muted">Authorization
+                        Code</label><input id="nurse-login-pass" type="password" class="form-control"
+                        placeholder="••••••••" /></div>
+                <button onclick="loginNurseHere()" class="btn btn-info btn-block py-2"
+                    style="color: white; font-weight: bold;">Enter Terminal</button>
+                <div id="login-msg" class="alert alert-danger mt-3" style="display:none; font-size: 0.85rem;"></div>
+                <div class="text-center mt-4"><a href="/" class="text-xs text-muted font-bold uppercase"
+                        style="letter-spacing: 1px;">Exit to Public View</a></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="dashboard-layout" class="dashboard-container" style="display: none;">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <img src="/images/logo.png" alt="Logo" style="height: 30px;">
+                <h3 class="text-primary mb-0 ml-2" style="font-size: 1.1rem;">RapidCare</h3>
+            </div>
+            <nav class="sidebar-nav">
+                <a class="nav-item active" onclick="showSection('beds')"><span>🛏️</span> Ward Management</a>
+                <a class="nav-item" onclick="showSection('profile')"><span>👩‍⚕️</span> Nurse Profile</a>
+                <div style="margin-top: auto; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+                    <a class="nav-item text-danger font-bold" onclick="logout()"><span>🚪</span> Terminal Exit</a>
+                </div>
+            </nav>
+        </aside>
+
+        <main class="main-content flex-grow">
+            <div id="section-beds" class="animate-fade-in">
+                <div class="flex justify-between items-center mb-4">
+                    <div>
+                        <h2 class="font-bold mb-0">Ward Status</h2>
+                        <p class="text-muted text-sm">Real-time bed availability management</p>
+                    </div>
+                    <button onclick="startBedScanner()" class="btn btn-primary shadow-sm"
+                        style="background: var(--info-color); border: none;">
+                        <span class="mr-1">📷</span> Scan QR
+                    </button>
+                </div>
+
+                <!-- Scanner View -->
+                <div id="scanner-view" class="card mb-4"
+                    style="display: none; max-width: 500px; margin-left: auto; margin-right: auto;">
+                    <div class="card-header bg-dark text-white flex justify-between items-center">
+                        <h4 class="mb-0 text-sm font-bold">QR Optical Scanner</h4>
+                        <button onclick="stopScanner()" class="btn btn-xs btn-outline-light">Close</button>
+                    </div>
+                    <div id="bed-scanner" style="width: 100%;"></div>
+                </div>
+
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header border-0 bg-white flex justify-between items-center py-3">
+                        <h4 class="font-bold mb-0 text-muted uppercase text-xs" style="letter-spacing: 1px;">All
+                            Hospital Beds</h4>
+                        <button onclick="loadNurseBeds()" class="btn btn-xs btn-outline">Sync Data</button>
+                    </div>
+                    <div id="bed-grid" class="grid grid-cols-4 gap-md p-4">
+                        <div class="text-center py-5 col-span-4 text-muted">Initializing ward data...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- QR Status Selection Modal -->
+            <div id="status-modal" class="modal"
+                style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center;">
+                <div class="bg-white p-4 rounded shadow-lg" style="width: 400px; max-width: 90%;">
+                    <div class="flex justify-between items-center mb-3 border-bottom pb-2">
+                        <h3 class="mb-0 text-primary" style="font-size: 1.25rem;">🔄 Update Bed Status</h3>
+                        <button onclick="closeStatusModal()" class="btn btn-sm btn-outline"
+                            style="border:none; font-size: 1.5rem;">✕</button>
+                    </div>
+                    <p class="text-sm text-muted mb-4">Select the new status for Bed <span id="modal-bed-id"
+                            class="font-bold text-dark"></span></p>
+                    <div class="grid grid-cols-1 gap-sm">
+                        <button onclick="confirmStatusUpdate('Vacant')"
+                            class="btn btn-outline text-success border-success py-2 font-bold">✅ Vacant</button>
+                        <button onclick="confirmStatusUpdate('Occupied')"
+                            class="btn btn-outline text-danger border-danger py-2 font-bold">🛌 Occupied</button>
+                        <button onclick="confirmStatusUpdate('Maintenance')"
+                            class="btn btn-outline text-warning border-warning py-2 font-bold">⚠️ Maintenance</button>
+                        <button onclick="confirmStatusUpdate('Cleaning')"
+                            class="btn btn-outline text-muted border-secondary py-2 font-bold">🧹 Cleaning</button>
+                    </div>
+                    <div class="mt-4 pt-2 border-top">
+                        <button onclick="closeStatusModal()" class="btn btn-block btn-light font-bold">Cancel</button>
+                    </div>
+                </div>
+            </div>
+
+
+            <div id="section-profile" class="animate-fade-in" style="display: none;">
+                <h2 class="font-bold mb-4">Staff Verification</h2>
+                <div class="card" style="max-width: 600px;">
+                    <div class="p-4">
+                        <div class="form-group"><label class="text-xs uppercase font-bold text-muted">Legal
+                                Name</label><input id="p-name" class="form-control" disabled /></div>
+                        <div class="form-group"><label class="text-xs uppercase font-bold text-muted">Medical Staff
+                                ID</label><input id="p-id" class="form-control" disabled /></div>
+                        <div class="form-group"><label class="text-xs uppercase font-bold text-muted">Primary
+                                Mobile</label><input id="p-mobile" class="form-control" disabled /></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        let currentNurse = null;
+        let bedScanner = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const role = localStorage.getItem('role');
+            const saved = JSON.parse(localStorage.getItem('nurse') || '{}');
+            const token = localStorage.getItem('jwt');
+
+            if (role === 'nurse' && saved.nurseId && token) {
+                loginSuccess(saved, token);
+            }
+        });
+
+        async function loginNurseHere() {
+            const username = document.getElementById('nurse-login-id').value.trim();
+            const password = document.getElementById('nurse-login-pass').value;
+
+            if (!username || !password) {
+                showError('Staff ID and Code required');
+                return;
+            }
+
+            try {
+                const res = await login('nurse', username, password);
+                localStorage.setItem('role', 'nurse');
+                localStorage.setItem('nurse', JSON.stringify(res.nurse));
+                localStorage.setItem('jwt', res.token);
+                loginSuccess(res.nurse, res.token);
+            } catch (e) {
+                showError(e.message);
+            }
+        }
+
+        function loginSuccess(nurse, token) {
+            currentNurse = nurse;
+            document.getElementById('login-section').style.display = 'none';
+            document.getElementById('dashboard-layout').style.display = 'flex';
+
+            document.getElementById('p-name').value = nurse.name;
+            document.getElementById('p-id').value = nurse.nurseId;
+            document.getElementById('p-mobile').value = nurse.mobile;
+
+            if (window.io) {
+                window.socket = io();
+                window.joinHospitalRoom(nurse.hospitalId);
+                window.socket.on('bed:update', () => loadNurseBeds());
+            }
+            loadNurseBeds();
+        }
+
+        function showError(msg) {
+            const el = document.getElementById('login-msg');
+            el.style.display = 'block';
+            el.innerText = msg;
+        }
+
+        function logout() {
+            localStorage.clear();
+            location.href = '/';
+        }
+
+        function showSection(id) {
+            document.getElementById('section-beds').style.display = 'none';
+            document.getElementById('section-profile').style.display = 'none';
+            document.getElementById('section-' + id).style.display = 'block';
+
+            document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+            document.querySelector(`[onclick="showSection('${id}')"]`).classList.add('active');
+        }
+
+        async function loadNurseBeds() {
+            try {
+                const beds = await api('/api/nurse/beds');
+                const grid = document.getElementById('bed-grid');
+                grid.innerHTML = beds.map(bed => {
+                    const statusClass = bed.status === 'Vacant' ? 'success' : bed.status === 'Occupied' ? 'danger' : bed.status === 'Maintenance' ? 'warning' : 'secondary';
+                    const icon = bed.status === 'Vacant' ? '✅' : bed.status === 'Occupied' ? '🛌' : bed.status === 'Maintenance' ? '⚠️' : '🧹';
+
+                    return `
+                    <div class="bed-card shadow-sm border-top-width-3" style="border-top: 3px solid var(--${statusClass}-color);">
+                       <div class="text-xs font-bold text-muted uppercase mb-1">${bed.bedType || 'General'}</div>
+                       <h3 class="mb-0 font-bold">${bed.bedNumber}</h3>
+                       <div class="text-xs font-bold badge badge-${statusClass} mt-1 mb-2">
+                         ${icon} ${bed.status}
+                       </div>
+                       <select onchange="updateBedStatus('${bed.bedId}', this.value)" class="bed-status-btn">
+                         <option value="Vacant" ${bed.status === 'Vacant' ? 'selected' : ''}>Vacant</option>
+                         <option value="Occupied" ${bed.status === 'Occupied' ? 'selected' : ''}>Occupied</option>
+                         <option value="Maintenance" ${bed.status === 'Maintenance' ? 'selected' : ''}>Maintenance</option>
+                         <option value="Cleaning" ${bed.status === 'Cleaning' ? 'selected' : ''}>Cleaning</option>
+                       </select>
+                    </div>
+                `}).join('');
+            } catch (e) {
+                document.getElementById('bed-grid').innerHTML = `<div class="col-span-4 alert alert-danger">${e.message}</div>`;
+            }
+        }
+
+        async function updateBedStatus(bedId, status) {
+            try {
+                await api('/api/nurse/bed-status', {
+                    method: 'PUT',
+                    body: JSON.stringify({ bedId, status })
+                });
+                notify(`Bed ${bedId} updated to ${status}`, 'success');
+            } catch (e) { notify(e.message, 'error'); }
+        }
+
+        function startBedScanner() {
+            document.getElementById('scanner-view').style.display = 'block';
+            if (!bedScanner) {
+                bedScanner = new Html5QrcodeScanner("bed-scanner", { fps: 15, qrbox: 250 });
+                bedScanner.render(onScanSuccess);
+            }
+        }
+
+        function stopScanner() {
+            if (bedScanner) {
+                bedScanner.clear();
+                bedScanner = null;
+            }
+            document.getElementById('scanner-view').style.display = 'none';
+        }
+
+        let pendingBedId = null;
+
+        function onScanSuccess(decodedText) {
+            let bedId = decodedText;
+            if (decodedText.includes('bedId=')) {
+                bedId = new URL(decodedText).searchParams.get('bedId');
+            } else if (decodedText.split('/').length > 1) {
+                bedId = decodedText.split('/').pop();
+            }
+
+            pendingBedId = bedId;
+            openStatusModal(bedId);
+            stopScanner();
+        }
+
+        function openStatusModal(bedId) {
+            document.getElementById('modal-bed-id').innerText = bedId;
+            document.getElementById('status-modal').style.display = 'flex';
+        }
+
+        function closeStatusModal() {
+            document.getElementById('status-modal').style.display = 'none';
+            pendingBedId = null;
+        }
+
+        async function confirmStatusUpdate(status) {
+            if (pendingBedId) {
+                await updateBedStatus(pendingBedId, status);
+                loadNurseBeds();
+                closeStatusModal();
+            }
+        }
+    </script>
+</body>
+
+</html>

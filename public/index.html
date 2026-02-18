@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RapidCare - Hospital Management System</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script defer src="/js/client.js"></script>
+</head>
+
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="container nav-container">
+      <div class="flex items-center gap-sm">
+        <img src="/images/logo.png" alt="RapidCare Logo" class="logo">
+        <span style="font-size: 1.5rem; font-weight: 700; color: var(--primary-color);">RapidCare</span>
+      </div>
+      <div>
+        <a href="/public.html" class="btn btn-danger btn-sm">
+          <span style="margin-right: 5px;">🚨</span> Emergency
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <section class="hero animate-fade-in">
+    <div class="container">
+      <h1>Advanced Emergency Response</h1>
+      <p>Real-time hospital management, bed tracking, and emergency coordination system.</p>
+      <div class="flex justify-center gap-md mt-4">
+        <a href="/public.html" class="btn btn-success" style="padding: 0.8rem 2rem; font-size: 1.1rem;">
+          Find Hospitals & Beds
+        </a>
+        <a href="#login-section" class="btn btn-outline" style="color: white; border-color: white;">
+          Staff Login
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <div class="container mb-3">
+    <div class="grid grid-cols-3 grid-auto-fit gap-lg">
+      <div class="card text-center">
+        <img src="/images/hospital.png" alt="Hospital" class="feature-icon">
+        <h3 class="font-bold">Hospital Operations</h3>
+        <p class="text-muted">Streamlined bed management, staff oversight, and emergency coordination.</p>
+      </div>
+      <div class="card text-center">
+        <img src="/images/doctor.png" alt="Doctor" class="feature-icon">
+        <h3 class="font-bold">Clinical Care</h3>
+        <p class="text-muted">Digital health records, attendance tracking, and duty assignments.</p>
+      </div>
+      <div class="card text-center">
+        <img src="/images/ambulance.png" alt="Ambulance" class="feature-icon">
+        <h3 class="font-bold">Emergency Transit</h3>
+        <p class="text-muted">Real-time ambulance tracking and pre-arrival patient data sync.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Portals Access Section -->
+  <div class="container mt-5 pt-5" id="login-section">
+    <div class="text-center mb-5">
+      <h2 class="font-bold mb-2">Internal Staff Access</h2>
+      <p class="text-muted">Direct terminals for medical and administrative operations</p>
+    </div>
+
+    <div class="grid grid-cols-3 grid-auto-fit gap-lg">
+
+      <!-- Reception Portal -->
+      <div class="card glass border-0 shadow-lg hover-up"
+        style="border-top: 5px solid var(--primary-color) !important;">
+        <div class="p-4">
+          <div class="flex items-center gap-md mb-4">
+            <div class="stat-icon" style="background: rgba(11, 110, 253, 0.1); color: var(--primary-color);">🏢</div>
+            <div>
+              <h4 class="font-bold mb-0">Reception</h4>
+              <p class="text-xs text-muted font-bold uppercase">Operations</p>
+            </div>
+          </div>
+          <div class="form-group mb-2">
+            <label class="text-xs font-bold uppercase text-muted">Node ID</label>
+            <input id="h-user" class="form-control" placeholder="HOSP-001" />
+          </div>
+          <div class="form-group mb-3">
+            <label class="text-xs font-bold uppercase text-muted">Security Code</label>
+            <input id="h-pass" class="form-control" type="password" placeholder="••••••••" />
+          </div>
+          <button class="btn btn-primary btn-block py-2 font-bold" onclick="loginHospital()">Join Terminal</button>
+          <div id="h-msg" class="alert alert-danger mt-3 text-xs font-bold" style="display:none;"></div>
+        </div>
+      </div>
+
+      <!-- Doctor Portal -->
+      <div class="card glass border-0 shadow-lg hover-up"
+        style="border-top: 5px solid var(--success-color) !important;">
+        <div class="p-4">
+          <div class="flex items-center gap-md mb-4">
+            <div class="stat-icon" style="background: rgba(25, 135, 84, 0.1); color: var(--success-color);">👨‍⚕️</div>
+            <div>
+              <h4 class="font-bold mb-0">Doctor</h4>
+              <p class="text-xs text-muted font-bold uppercase">Clinical Control</p>
+            </div>
+          </div>
+          <div class="form-group mb-2">
+            <label class="text-xs font-bold uppercase text-muted">Staff ID</label>
+            <input id="d-user" class="form-control" placeholder="DOC-100" />
+          </div>
+          <div class="form-group mb-3">
+            <label class="text-xs font-bold uppercase text-muted">Passphrase</label>
+            <input id="d-pass" class="form-control" type="password" placeholder="••••••••" />
+          </div>
+          <button class="btn btn-success btn-block py-2 font-bold" onclick="loginDoctor()">Join Terminal</button>
+          <div id="d-msg" class="alert alert-danger mt-3 text-xs font-bold" style="display:none;"></div>
+        </div>
+      </div>
+
+      <!-- Ambulance Portal -->
+      <div class="card glass border-0 shadow-lg hover-up" style="border-top: 5px solid var(--danger-color) !important;">
+        <div class="p-4">
+          <div class="flex items-center gap-md mb-4">
+            <div class="stat-icon" style="background: rgba(220, 53, 69, 0.1); color: var(--danger-color);">🚑</div>
+            <div>
+              <h4 class="font-bold mb-0">Dispatcher</h4>
+              <p class="text-xs text-muted font-bold uppercase">Emergency Fleet</p>
+            </div>
+          </div>
+          <div class="form-group mb-2">
+            <label class="text-xs font-bold uppercase text-muted">Fleet Unit ID</label>
+            <input id="a-user" class="form-control" placeholder="AMB-001" />
+          </div>
+          <div class="form-group mb-3">
+            <label class="text-xs font-bold uppercase text-muted">Dispatch Code</label>
+            <input id="a-pass" class="form-control" type="password" placeholder="••••••••" />
+          </div>
+          <button class="btn btn-danger btn-block py-2 font-bold" onclick="loginAmbulance()">Join Terminal</button>
+          <div id="a-msg" class="alert alert-danger mt-3 text-xs font-bold" style="display:none;"></div>
+        </div>
+      </div>
+
+      <!-- Nurse Portal -->
+      <div class="card glass border-0 shadow-lg hover-up" style="border-top: 5px solid var(--info-color) !important;">
+        <div class="p-4">
+          <div class="flex items-center gap-md mb-4">
+            <div class="stat-icon" style="background: rgba(13, 202, 240, 0.1); color: var(--info-color);">👩‍⚕️</div>
+            <div>
+              <h4 class="font-bold mb-0">Nurse</h4>
+              <p class="text-xs text-muted font-bold uppercase">Ward Analytics</p>
+            </div>
+          </div>
+          <div class="form-group mb-2">
+            <label class="text-xs font-bold uppercase text-muted">Staff ID</label>
+            <input id="n-user" class="form-control" placeholder="NUR-100" />
+          </div>
+          <div class="form-group mb-3">
+            <label class="text-xs font-bold uppercase text-muted">Security Code</label>
+            <input id="n-pass" class="form-control" type="password" placeholder="••••••••" />
+          </div>
+          <button class="btn btn-info btn-block py-2 font-bold text-white" onclick="loginNurse()">Join Terminal</button>
+          <div id="n-msg" class="alert alert-danger mt-3 text-xs font-bold" style="display:none;"></div>
+        </div>
+      </div>
+
+      <!-- Admin Portal -->
+      <div class="card glass border-0 shadow-lg hover-up" style="border-top: 5px solid var(--dark-color) !important;">
+        <div class="p-4">
+          <div class="flex items-center gap-md mb-4">
+            <div class="stat-icon" style="background: rgba(33, 37, 41, 0.1); color: var(--dark-color);">🛡️</div>
+            <div>
+              <h4 class="font-bold mb-0">Authority</h4>
+              <p class="text-xs text-muted font-bold uppercase">System Master</p>
+            </div>
+          </div>
+          <div class="form-group mb-2">
+            <label class="text-xs font-bold uppercase text-muted">Admin User</label>
+            <input id="sa-user" class="form-control" placeholder="Administrator" />
+          </div>
+          <div class="form-group mb-3">
+            <label class="text-xs font-bold uppercase text-muted">Authority Key</label>
+            <input id="sa-pass" class="form-control" type="password" placeholder="••••••••" />
+          </div>
+          <button class="btn btn-dark btn-block py-2 font-bold" onclick="loginSuperAdmin()">Join Terminal</button>
+          <div id="sa-msg" class="alert alert-danger mt-3 text-xs font-bold" style="display:none;"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Test Credentials Section (Temporary) -->
+  <div class="container mt-4 mb-5">
+    <div class="card border-warning"
+      style="border-left: 4px solid #ffc107; max-width: 700px; margin: 0 auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+      <div class="card-header bg-light cursor-pointer" onclick="toggleCredentials()" style="padding: 16px;">
+        <h4 class="mb-0 flex justify-between items-center">
+          <span>🔑 Test Credentials</span>
+          <span id="cred-toggle-icon">▼</span>
+        </h4>
+      </div>
+      <div id="test-credentials" style="display: none; padding: 20px; background: #fff;">
+        <div class="grid grid-cols-1 gap-md">
+
+          <!-- Hospital Credentials -->
+          <div style="border: 1px solid #e3e6f0; border-radius: 8px; padding: 12px; background: #f8f9fc;">
+            <strong class="text-primary" style="display: block; margin-bottom: 8px; font-size: 1.1rem;">🏥 Hospital
+              Login</strong>
+            <div class="flex justify-between items-center bg-white p-3 border rounded" style="margin-bottom: 8px;">
+              <code style="font-size: 0.95rem; line-height: 1.6;">
+                <strong>ID:</strong> HOSP001<br>
+                <strong>Pass:</strong> test@1234
+              </code>
+              <button class="btn btn-sm btn-primary" onclick="fillLogin('hospital', 'HOSP001', 'test@1234')"
+                style="white-space: nowrap;">
+                ✓ Auto-fill
+              </button>
+            </div>
+            <details class="mt-2" style="font-size: 0.9rem;">
+              <summary class="cursor-pointer text-muted" style="padding: 4px 0; font-weight: 500;">📋 See all hospitals
+                (3)</summary>
+              <div
+                style="margin-left: 16px; margin-top: 8px; padding: 8px; background: #fff; border-left: 3px solid #0d6efd; border-radius: 4px;">
+                <code class="d-block" style="padding: 4px 0;">• HOSP001 - RapidCare General (Raipur)</code>
+                <code class="d-block" style="padding: 4px 0;">• HOSP002 - City Multispeciality (Naya Raipur)</code>
+                <code class="d-block" style="padding: 4px 0;">• HOSP003 - Raipur Medical Center (Raipur)</code>
+              </div>
+            </details>
+          </div>
+
+          <!-- Doctor Credentials -->
+          <div style="border: 1px solid #e3e6f0; border-radius: 8px; padding: 12px; background: #f0fdf4;">
+            <strong class="text-success" style="display: block; margin-bottom: 8px; font-size: 1.1rem;">👨‍⚕️ Doctor
+              Login</strong>
+            <div class="flex justify-between items-center bg-white p-3 border rounded" style="margin-bottom: 8px;">
+              <code style="font-size: 0.95rem; line-height: 1.6;">
+                <strong>ID:</strong> DOC100<br>
+                <strong>Pass:</strong> test@1234
+              </code>
+              <button class="btn btn-sm btn-success" onclick="fillLogin('doctor', 'DOC100', 'test@1234')"
+                style="white-space: nowrap;">
+                ✓ Auto-fill
+              </button>
+            </div>
+            <details class="mt-2" style="font-size: 0.9rem;">
+              <summary class="cursor-pointer text-muted" style="padding: 4px 0; font-weight: 500;">📋 See all doctors
+                (4)</summary>
+              <div
+                style="margin-left: 16px; margin-top: 8px; padding: 8px; background: #fff; border-left: 3px solid #198754; border-radius: 4px;">
+                <code class="d-block" style="padding: 4px 0;">• DOC100 - Dr. A Sharma (Cardiology) @ HOSP001</code>
+                <code class="d-block" style="padding: 4px 0;">• DOC101 - Dr. B Verma (Orthopedics) @ HOSP001</code>
+                <code class="d-block" style="padding: 4px 0;">• DOC102 - Dr. C Patel (Neurology) @ HOSP002</code>
+                <code class="d-block" style="padding: 4px 0;">• DOC103 - Dr. D Singh (Gynecology) @ HOSP003</code>
+              </div>
+            </details>
+          </div>
+
+          <!-- Ambulance Credentials -->
+          <div style="border: 1px solid #e3e6f0; border-radius: 8px; padding: 12px; background: #fef2f2;">
+            <strong class="text-danger" style="display: block; margin-bottom: 8px; font-size: 1.1rem;">🚑 Ambulance
+              Login</strong>
+            <div class="flex justify-between items-center bg-white p-3 border rounded" style="margin-bottom: 8px;">
+              <code style="font-size: 0.95rem; line-height: 1.6;">
+                <strong>ID:</strong> AMB001<br>
+                <strong>Pass:</strong> test@1234
+              </code>
+              <button class="btn btn-sm btn-danger" onclick="fillLogin('ambulance', 'AMB001', 'test@1234')"
+                style="white-space: nowrap;">
+                ✓ Auto-fill
+              </button>
+            </div>
+            <details class="mt-2" style="font-size: 0.9rem;">
+              <summary class="cursor-pointer text-muted" style="padding: 4px 0; font-weight: 500;">📋 See all ambulances
+                (2)</summary>
+              <div
+                style="margin-left: 16px; margin-top: 8px; padding: 8px; background: #fff; border-left: 3px solid #dc3545; border-radius: 4px;">
+                <code class="d-block" style="padding: 4px 0;">• AMB001 - CG04-1234 @ HOSP001</code>
+                <code class="d-block" style="padding: 4px 0;">• AMB002 - CG04-5678 @ HOSP002</code>
+              </div>
+            </details>
+          </div>
+
+        </div>
+        <div
+          style="margin-top: 16px; padding: 12px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+          <p class="text-muted mb-0" style="font-size: 0.9rem; line-height: 1.5;">
+            <strong>⚠️ Note:</strong> These credentials are for testing/development purposes only.
+            All passwords are <code>test@1234</code> (bcrypt-hashed in database).
+            Updated after database reset.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <footer class="text-center mt-4" style="padding: 2rem; background: #fff; border-top: 1px solid var(--border-color);">
+    <p class="text-muted mb-0">&copy; 2025 RapidCare. All rights reserved.</p>
+  </footer>
+
+  <script>
+    function showTab(which) {
+      const login = document.getElementById('pane-login');
+      const reg = document.getElementById('pane-register');
+      const tLogin = document.getElementById('tab-login');
+      const tReg = document.getElementById('tab-register');
+
+      if (which === 'login') {
+        login.style.display = 'block';
+        reg.style.display = 'none';
+        tLogin.classList.add('active');
+        tReg.classList.remove('active');
+      } else {
+        login.style.display = 'none';
+        reg.style.display = 'block';
+        tLogin.classList.remove('active');
+        tReg.classList.add('active');
+      }
+    }
+
+    function showMsg(id, msg, type = 'danger') {
+      const el = document.getElementById(id);
+      el.innerText = msg;
+      el.className = `alert alert-${type} mt-3`;
+      el.style.display = 'block';
+      setTimeout(() => { el.style.display = 'none'; }, 3000);
+    }
+
+    async function loginHospital() {
+      try {
+        const u = document.getElementById('h-user').value.trim();
+        const p = document.getElementById('h-pass').value;
+        if (!u || !p) return showMsg('h-msg', 'Enter ID and Password');
+
+        const res = await login('hospital', u, p);
+        try {
+          localStorage.setItem('role', 'hospital');
+          localStorage.setItem('hospitalId', u);
+          localStorage.setItem('jwt', res.token);
+        } catch (e) { }
+
+        showMsg('h-msg', 'Redirecting...', 'success');
+        setTimeout(() => { window.location.href = '/reception.html'; }, 800);
+      } catch (e) { showMsg('h-msg', 'Login failed: ' + e.message); }
+    }
+    async function loginDoctor() {
+      try {
+        const u = document.getElementById('d-user').value.trim();
+        const p = document.getElementById('d-pass').value;
+        if (!u || !p) return showMsg('d-msg', 'Enter ID and Password');
+
+        const res = await login('doctor', u, p);
+        try {
+          localStorage.setItem('role', 'doctor');
+          localStorage.setItem('doctor', JSON.stringify(res.doctor || {}));
+          localStorage.setItem('jwt', res.token);
+        } catch (e) { }
+
+        showMsg('d-msg', 'Redirecting...', 'success');
+        setTimeout(() => { window.location.href = '/doctor.html'; }, 800);
+      } catch (e) { showMsg('d-msg', 'Login failed: ' + e.message); }
+    }
+
+    async function loginAmbulance() {
+      try {
+        const u = document.getElementById('a-user').value.trim();
+        const p = document.getElementById('a-pass').value;
+        if (!u || !p) return showMsg('a-msg', 'Enter ID and Password');
+
+        const res = await login('ambulance', u, p);
+        try {
+          localStorage.setItem('role', 'ambulance');
+          localStorage.setItem('ambulance', JSON.stringify(res.ambulance || {}));
+          localStorage.setItem('jwt', res.token);
+        } catch (e) { }
+
+        showMsg('a-msg', 'Redirecting...', 'success');
+        setTimeout(() => { window.location.href = '/ambulance.html'; }, 800);
+      } catch (e) { showMsg('a-msg', 'Login failed: ' + e.message); }
+    }
+
+    async function loginNurse() {
+      try {
+        const u = document.getElementById('n-user').value.trim();
+        const p = document.getElementById('n-pass').value;
+        if (!u || !p) return showMsg('n-msg', 'Enter ID and Password');
+
+        const res = await login('nurse', u, p);
+        try {
+          localStorage.setItem('role', 'nurse');
+          localStorage.setItem('nurse', JSON.stringify(res.nurse || {}));
+          localStorage.setItem('jwt', res.token);
+        } catch (e) { }
+
+        showMsg('n-msg', 'Redirecting...', 'success');
+        setTimeout(() => { window.location.href = '/nurse.html'; }, 800);
+      } catch (e) { showMsg('n-msg', 'Login failed: ' + e.message); }
+    }
+
+    async function loginSuperAdmin() {
+      try {
+        const u = document.getElementById('sa-user').value.trim();
+        const p = document.getElementById('sa-pass').value;
+        if (!u || !p) return showMsg('sa-msg', 'Enter Username and Password');
+
+        const res = await login('superadmin', u, p);
+        try {
+          localStorage.setItem('role', 'superadmin');
+          localStorage.setItem('jwt', res.token);
+        } catch (e) { }
+
+        showMsg('sa-msg', 'Redirecting...', 'success');
+        setTimeout(() => { window.location.href = '/admin.html'; }, 800);
+      } catch (e) { showMsg('sa-msg', 'Login failed: ' + e.message); }
+    }
+
+    async function registerHospital() {
+      const body = {
+        hospitalId: document.getElementById('r-hid').value.trim(),
+        name: document.getElementById('r-name').value,
+        contact: document.getElementById('r-contact').value,
+        password: document.getElementById('r-pass').value,
+        googleMapUrl: document.getElementById('r-googlemap').value.trim(),
+        address: {
+          state: document.getElementById('r-state').value,
+          district: document.getElementById('r-district').value,
+          city: document.getElementById('r-city').value,
+          street: document.getElementById('r-street').value
+        }
+      };
+
+      // Basic validation
+      if (!body.hospitalId || !body.name || !body.password) {
+        return showMsg('r-msg', 'Please fill in all required fields');
+      }
+
+      try {
+        await api('/api/hospital', { method: 'POST', body: JSON.stringify(body) });
+        showMsg('r-msg', 'Registration successful! Please login.', 'success');
+        setTimeout(() => {
+          showTab('login');
+          document.getElementById('h-user').value = body.hospitalId;
+        }, 1500);
+      } catch (e) { showMsg('r-msg', 'Registration failed: ' + e.message); }
+    }
+
+    // Test Credentials Logic
+    function toggleCredentials() {
+      const el = document.getElementById('test-credentials');
+      const icon = document.getElementById('cred-toggle-icon');
+      if (el.style.display === 'none') {
+        el.style.display = 'block';
+        icon.innerText = '▲';
+      } else {
+        el.style.display = 'none';
+        icon.innerText = '▼';
+      }
+    }
+
+    function fillLogin(role, id, pass) {
+      showTab('login');
+      if (role === 'hospital') {
+        document.getElementById('h-user').value = id;
+        document.getElementById('h-pass').value = pass;
+      } else if (role === 'doctor') {
+        document.getElementById('d-user').value = id;
+        document.getElementById('d-pass').value = pass;
+      } else if (role === 'ambulance') {
+        document.getElementById('a-user').value = id;
+        document.getElementById('a-pass').value = pass;
+      }
+      // Scroll to login section
+      document.getElementById('login-section').scrollIntoView({ behavior: 'smooth' });
+    }
+  </script>
+
+</body>
+
+</html>
